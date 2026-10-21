@@ -3,7 +3,7 @@
 一本用 [ElegantBook](https://github.com/ElegantLaTeX/ElegantBook) 模板排版的 C 语言培训教程，
 面向**电控算法组的新同学**，假设读者此前没有编程基础。
 
-- 全书 11 章 + 5 个附录，约 210 页
+- 全书 11 章 + 5 个附录，约 215 页
 - 代码严格遵循 **C89/C90** 风格：变量先声明、`for` 里不定义变量、只用 `/* */` 注释
 - 每章配有：本章导读、一句话题记、TikZ 图解、完整可编译示例、运行结果、例题与章末习题
 - 包含“拔高阅读”与“小心有坑”两类选读/提醒盒子
@@ -37,6 +37,8 @@
 
 ```
 main.tex                    主文件（导言区、代码盒/提示盒定义、TikZ 样式）
+elegantbook.cls             模板类文件（放在根目录，编译时可直接找到）
+latexmkrc                   强制使用 XeLaTeX，Overleaf / latexmk 会读取
 chapters/
   00-preface.tex            写在前面（学习路线、C89 约定、排版说明）
   ch01-computer.tex         第 1 章 …
@@ -47,31 +49,35 @@ chapters/
 assets/
   cover.tex / cover.pdf     自定义封面（TikZ 绘制）
   logo.tex / logo.pdf       自定义徽标
-vendor/elegantbook/         ElegantBook 模板类文件（CTAN 4.7 版）
+vendor/elegantbook/         ElegantBook 原始发行包与 LPPL 许可证
 ```
 
 ## 编译方法
 
-需要 **XeLaTeX**（推荐 TeX Live 或 MiKTeX），因为模板使用 `ctex` 和系统字体。
+需要 **XeLaTeX**（推荐 TeX Live 或 MiKTeX）。模板使用 `ctex`，`pdfLaTeX` 无法编译。
 
-模板类文件放在 `vendor/elegantbook/`，编译前把它加入搜索路径：
+在项目根目录执行：
 
-**Windows PowerShell**
-
-```powershell
-$env:TEXINPUTS = "$PWD\vendor\elegantbook;"
+```bash
 xelatex main.tex
 xelatex main.tex      # 第二遍：目录、交叉引用、书签
 ```
 
-**Linux / macOS**
+或者：
 
 ```bash
-export TEXINPUTS="$PWD/vendor/elegantbook:"
-xelatex main.tex && xelatex main.tex
+latexmk -xelatex main.tex
 ```
 
-也可以用 `latexmk -xelatex main.tex`（同样需要先设置 `TEXINPUTS`）。
+不需要再设置 `TEXINPUTS`：`elegantbook.cls` 已经放在根目录。
+
+### Overleaf
+
+1. 把仓库或 zip 上传到 Overleaf；
+2. 在 **Menu → Compiler** 中选择 **XeLaTeX**（如果读取了 `latexmkrc`，通常会自动使用 XeLaTeX）；
+3. 直接编译即可。
+
+> 字体说明：`main.tex` 中只有检测到 Consolas 时才把它设为代码字体，因此 Linux / Overleaf 上会自动回退到默认等宽字体，不会因为缺字体而失败。中文由 `ctex` 自动选择本机可用字体（Windows 用宋体/黑体/楷体，Overleaf 用 Fandol）。
 
 > 封面和徽标已经预编译为 PDF，正常情况下不需要重新生成。
 > 如需修改，进入 `assets/` 目录执行 `xelatex cover.tex` / `xelatex logo.tex`。

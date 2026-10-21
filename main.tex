@@ -60,7 +60,9 @@
 \colorlet{coverlinecolor}{covercyan}
 
 % 代码字体：Windows 上的 Consolas，接近大家在编辑器里看到的样子
-\setmonofont{Consolas}[Scale=0.92]
+\IfFontExistsTF{Consolas}{%
+  \setmonofont{Consolas}[Scale=0.92]%
+}{}
 
 % ------------------------- 代码排版 ---------------------------------------
 \lstdefinestyle{c89}{
