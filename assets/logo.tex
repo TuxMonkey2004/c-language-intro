@@ -1,0 +1,34 @@
+% 徽标：40mm x 40mm
+\documentclass[tikz,border=0pt]{standalone}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\usepackage{fontspec}
+\setmainfont{Consolas}
+
+\definecolor{navy}{RGB}{9,26,48}
+\definecolor{cyan}{RGB}{70,200,220}
+\definecolor{amber}{RGB}{242,166,58}
+
+\begin{document}
+\begin{tikzpicture}[x=1mm,y=1mm]
+  \clip (0,0) rectangle (40,40);
+  \fill[navy,rounded corners=3mm] (0,0) rectangle (40,40);
+  \draw[cyan,opacity=0.7,line width=0.6pt,rounded corners=3mm]
+    (1.2,1.2) rectangle (38.8,38.8);
+
+  % 电路引脚
+  \foreach \y in {12,20,28} {
+    \draw[cyan,line width=0.8pt] (0,\y) -- (5,\y);
+    \draw[cyan,line width=0.8pt] (35,\y) -- (40,\y);
+  }
+  \foreach \x in {14,26} {
+    \draw[cyan,line width=0.8pt] (\x,0) -- (\x,5);
+    \draw[cyan,line width=0.8pt] (\x,35) -- (\x,40);
+  }
+
+  % 中央 C
+  \node[font=\ttfamily\fontsize{30}{30}\selectfont\bfseries,text=white]
+    at (20,21) {C};
+  \node[font=\ttfamily\tiny,text=amber] at (20,10) {89};
+\end{tikzpicture}
+\end{document}

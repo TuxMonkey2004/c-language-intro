@@ -1,0 +1,1075 @@
+\chapter{分支：明辨是非}
+
+\begin{introduction}
+  \item \texttt{if}：满足条件才执行
+  \item \texttt{if-else}：二选一
+  \item \texttt{else if}：多路分支与分段函数
+  \item 嵌套分支与“就近匹配”的 \texttt{else}
+  \item \texttt{switch}：按整数常量分情况处理
+  \item 分支的常见错误与综合例题
+\end{introduction}
+
+\chaptermotto{「计算机的“聪明”，来自你替它写好的每一个“如果”。」}
+
+顺序结构只能一条路走到黑。可现实中的程序要会看情况：温度过高就报警，按键按下就启动，成绩及格就通过，除数不为零才做除法。这就需要\textbf{分支结构}。
+
+C 语言的分支工具只有两类：\code{if} 语句和 \code{switch} 语句。这一章把它们的语法、套路、坑和例题一次讲透。
+
+\section{为什么需要分支}
+
+先看一个没有分支的程序：
+
+\begin{codebox}{no-branch.c —— 只会往前走的程序}
+#include <stdio.h>
+
+int main(void)
+{
+    int score = 85;
+
+    printf("你的成绩是 %d 分\n", score);
+    printf("恭喜你，通过了！\n");
+    return 0;
+}
+\end{codebox}
+
+无论 \code{score} 是多少，它都会打印“恭喜你，通过了”。这显然不合理。我们希望程序这样思考：
+
+\begin{center}
+\kaishu 如果成绩大于等于 60，就打印“通过”；否则打印“未通过”。
+\end{center}
+
+用流程图表示：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,node distance=7mm]
+    \node[terminator] (start) {开始};
+    \node[io,below=of start] (in) {读入成绩 score};
+    \node[decision,below=9mm of in] (cond) {score $\ge$ 60 ?};
+    \node[process,below left=9mm and 4mm of cond] (pass) {输出“通过”};
+    \node[process,below right=9mm and 4mm of cond] (fail) {输出“未通过”};
+    \node[terminator,below=18mm of cond] (end) {结束};
+
+    \draw[flow] (start) -- (in);
+    \draw[flow] (in) -- (cond);
+    \draw[flow] (cond) -- node[lbl,left]{是} (pass);
+    \draw[flow] (cond) -- node[lbl,right]{否} (fail);
+    \draw[flow] (pass) |- (end);
+    \draw[flow] (fail) |- (end);
+  \end{tikzpicture}
+  \caption{带分支的流程图：条件成立走一条路，不成立走另一条路}
+  \label{fig:if-flow}
+\end{figure}
+
+流程图里的\textbf{菱形}表示判断，有“是/否”两条出口；\textbf{矩形}表示处理；\textbf{圆角矩形}表示开始/结束；\textbf{平行四边形}表示输入输出。后面我们还会用这套符号。
+
+\section{\texttt{if} 语句}
+
+\subsection{基本语法}
+
+\begin{center}
+\fbox{\parbox{0.72\textwidth}{
+\ttfamily if (条件) \{ \\
+\phantom{xxxx}语句; \\
+\ttfamily \}
+}}
+\end{center}
+
+执行逻辑：计算括号里的条件，如果结果为\textbf{真}（非 0），就执行花括号里的语句；否则跳过。
+
+\begin{codebox}{if-basic.c —— 最简单的 if}
+#include <stdio.h>
+
+int main(void)
+{
+    int score = 85;
+
+    if (score >= 60) {
+        printf("恭喜你，通过了！\n");
+    }
+
+    printf("程序结束\n");
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+恭喜你，通过了！
+程序结束
+\end{outbox}
+
+如果把 \code{score} 改成 50，第一行就不会打印，但“程序结束”仍然会打印——因为 \code{if} 只控制它后面那一组花括号。
+
+\subsection{条件可以是任意表达式}
+
+\code{if} 只关心“是不是 0”：非 0 为真，0 为假。所以下面这些写法都合法：
+
+\begin{codebox}{if-truth.c —— 条件的真真假假}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 5;
+
+    if (a) {
+        printf("a 非零，条件为真\n");
+    }
+
+    if (a - 5) {
+        printf("这一行不会打印\n");
+    }
+
+    if (a > 0 && a < 10) {
+        printf("a 在 0 到 10 之间\n");
+    }
+
+    if (!a) {
+        printf("这一行也不会打印\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a 非零，条件为真
+a 在 0 到 10 之间
+\end{outbox}
+
+\begin{tipbox}[条件写清楚，别炫技]
+\code{if (a)} 虽然合法，但读者要猜“\code{a} 是什么含义”。更好的写法是 \code{if (a != 0)} 或 \code{if (count > 0)}，把意图写出来。
+\end{tipbox}
+
+\subsection{单条语句可以省略花括号}
+
+如果 \code{if} 后面只有一条语句，花括号可以省略：
+
+\begin{codebox}{if-nobrace.c —— 省略花括号}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 10;
+
+    if (a > 0)
+        printf("a 是正数\n");
+
+    return 0;
+}
+\end{codebox}
+
+\begin{pitfall}[省略花括号是 bug 的温床]
+\begin{codebox}{if-bug.c —— 少写花括号的后果}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = -5;
+
+    if (a > 0)
+        printf("a 是正数\n");
+        printf("这一行无论 a 正负都会打印\n");   /* 缩进骗了你 */
+
+    return 0;
+}
+\end{codebox}
+第二行看起来在 \code{if} 里面，实际上不在。\textbf{本书约定：即使只有一条语句，也写花括号}。多打两个字符，少一个通宵调试。
+\end{pitfall}
+
+\section{\texttt{if-else} 语句}
+
+\subsection{二选一}
+
+\begin{center}
+\fbox{\parbox{0.78\textwidth}{
+\ttfamily if (条件) \{ \\
+\phantom{xxxx}条件为真时执行; \\
+\ttfamily \} else \{ \\
+\phantom{xxxx}条件为假时执行; \\
+\ttfamily \}
+}}
+\end{center}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,node distance=7mm]
+    \node[terminator] (start) {开始};
+    \node[decision,below=9mm of start] (cond) {条件 ?};
+    \node[process,below left=9mm and 8mm of cond] (yes) {语句组 A};
+    \node[process,below right=9mm and 8mm of cond] (no) {语句组 B};
+    \node[terminator,below=20mm of cond] (end) {结束};
+
+    \draw[flow] (start) -- (cond);
+    \draw[flow] (cond) -- node[lbl,left]{真} (yes);
+    \draw[flow] (cond) -- node[lbl,right]{假} (no);
+    \draw[flow] (yes) |- (end);
+    \draw[flow] (no) |- (end);
+  \end{tikzpicture}
+  \caption{\texttt{if-else} 的执行路径}
+  \label{fig:ifelse-flow}
+\end{figure}
+
+\begin{codebox}{if-else.c —— 判断正负数}
+#include <stdio.h>
+
+int main(void)
+{
+    int n;
+
+    printf("请输入一个整数：");
+    scanf("%d", &n);
+
+    if (n > 0) {
+        printf("%d 是正数\n", n);
+    } else {
+        printf("%d 不是正数\n", n);
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入一个整数：-7
+-7 不是正数
+\end{outbox}
+
+注意“不是正数”包括 0 和负数。如果想区分 0、正数、负数，就需要下一节的多分支。
+
+\subsection{例：求绝对值}
+
+\begin{example}
+输入一个整数，输出它的绝对值。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{abs.c —— 求绝对值}
+#include <stdio.h>
+
+int main(void)
+{
+    int n;
+    int abs_n;
+
+    printf("请输入一个整数：");
+    scanf("%d", &n);
+
+    if (n < 0) {
+        abs_n = -n;
+    } else {
+        abs_n = n;
+    }
+
+    printf("|%d| = %d\n", n, abs_n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入一个整数：-9
+|-9| = 9
+\end{outbox}
+
+也可以用条件运算符写成一行：\code{abs_n = (n < 0) ? -n : n;}。
+\end{solution}
+
+\section{\texttt{else if}：多路分支}
+
+\subsection{语法与执行顺序}
+
+当情况不止两种时，可以用 \code{else if} 串成一条“阶梯”：
+
+\begin{center}
+\fbox{\parbox{0.86\textwidth}{
+\ttfamily if (条件1) \{ ... \} \\
+\ttfamily else if (条件2) \{ ... \} \\
+\ttfamily else if (条件3) \{ ... \} \\
+\ttfamily else \{ ... \}
+}}
+\end{center}
+
+执行逻辑：从上往下依次判断，\textbf{一旦某个条件成立，就执行对应的语句组，然后跳出整个阶梯}；如果所有条件都不成立，执行最后的 \code{else}。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,node distance=5mm]
+    \node[decision] (c1) at (0,0) {条件 1 ?};
+    \node[process,right=14mm of c1] (b1) {语句组 1};
+    \node[decision,below=8mm of c1] (c2) {条件 2 ?};
+    \node[process,right=14mm of c2] (b2) {语句组 2};
+    \node[decision,below=8mm of c2] (c3) {条件 3 ?};
+    \node[process,right=14mm of c3] (b3) {语句组 3};
+    \node[process,below=8mm of c3] (be) {else 语句组};
+
+    \draw[flow] (c1) -- node[lbl,above]{真} (b1);
+    \draw[flow] (c1) -- node[lbl,right]{假} (c2);
+    \draw[flow] (c2) -- node[lbl,above]{真} (b2);
+    \draw[flow] (c2) -- node[lbl,right]{假} (c3);
+    \draw[flow] (c3) -- node[lbl,above]{真} (b3);
+    \draw[flow] (c3) -- node[lbl,right]{假} (be);
+    \node[lbl,right=2mm of b1] {执行完即跳出};
+    \node[lbl,right=2mm of b2] {执行完即跳出};
+    \node[lbl,right=2mm of b3] {执行完即跳出};
+  \end{tikzpicture}
+  \caption{\texttt{else if} 阶梯：从上到下，命中即停}
+  \label{fig:elseif}
+\end{figure}
+
+\subsection{例：成绩等级}
+
+\begin{example}
+输入一个 0\textasciitilde100 的成绩，输出等级：90 及以上为 A，80\textasciitilde89 为 B，70\textasciitilde79 为 C，60\textasciitilde69 为 D，60 以下为 E。非法成绩给出提示。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{grade.c —— 成绩等级}
+#include <stdio.h>
+
+int main(void)
+{
+    int score;
+
+    printf("请输入成绩（0-100）：");
+    scanf("%d", &score);
+
+    if (score < 0 || score > 100) {
+        printf("成绩不合法\n");
+    } else if (score >= 90) {
+        printf("等级 A\n");
+    } else if (score >= 80) {
+        printf("等级 B\n");
+    } else if (score >= 70) {
+        printf("等级 C\n");
+    } else if (score >= 60) {
+        printf("等级 D\n");
+    } else {
+        printf("等级 E\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入成绩（0-100）：85
+等级 B
+\end{outbox}
+
+注意判断顺序：先排除非法值，再从高到低判断。如果把 \code{score >= 60} 放在最前面，85 会先命中 60 这一档，直接输出 D，后面的判断永远不会执行。
+\end{solution}
+
+\begin{pitfall}[\texttt{else if} 的顺序很重要]
+多分支是“命中即停”的。范围判断要从宽到窄或从窄到宽，保证先命中的是更具体的条件。写完后用边界值（59、60、89、90）测试一遍。
+\end{pitfall}
+
+\subsection{例：分段函数}
+
+\begin{example}
+输入 $x$，计算
+\[
+y = \begin{cases}
+-1, & x < 0,\\
+0, & x = 0,\\
+1, & x > 0.
+\end{cases}
+\]
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{sign.c —— 符号函数}
+#include <stdio.h>
+
+int main(void)
+{
+    double x;
+    int y;
+
+    printf("请输入 x：");
+    scanf("%lf", &x);
+
+    if (x < 0) {
+        y = -1;
+    } else if (x == 0) {
+        y = 0;
+    } else {
+        y = 1;
+    }
+
+    printf("y = %d\n", y);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入 x：-2.5
+y = -1
+\end{outbox}
+
+\begin{pitfall}[浮点数不要直接用 \texttt{==} 判断]
+\code{x == 0} 对精确输入的 0 可以工作，但如果是计算出来的值（例如 \code{0.1 + 0.2 - 0.3}），它可能是一个极小的非零数，判断就会失败。更稳妥的写法是 \code{fabs(x) < 1e-9}（需要 \file{math.h}）。
+\end{pitfall}
+\end{solution}
+
+\section{嵌套分支}
+
+\subsection{一个分支里再套一个分支}
+
+分支可以嵌套。例如判断一个年份是否是闰年，再判断这一年的二月有多少天：
+
+\begin{codebox}{nested.c —— 嵌套 if}
+#include <stdio.h>
+
+int main(void)
+{
+    int year;
+    int is_leap;
+
+    printf("请输入年份：");
+    scanf("%d", &year);
+
+    if (year % 4 == 0) {
+        if (year % 100 != 0) {
+            is_leap = 1;
+        } else {
+            if (year % 400 == 0) {
+                is_leap = 1;
+            } else {
+                is_leap = 0;
+            }
+        }
+    } else {
+        is_leap = 0;
+    }
+
+    if (is_leap) {
+        printf("%d 年是闰年，二月有 29 天\n", year);
+    } else {
+        printf("%d 年不是闰年，二月有 28 天\n", year);
+    }
+
+    return 0;
+}
+\end{codebox}
+
+嵌套让逻辑更接近人的思考方式，但层数太多会难以阅读。一般建议嵌套不超过三层；超过时，考虑用“提前返回”或拆成函数（第 9 章之后会讲）。
+
+\subsection{悬空的 \texttt{else}}
+
+看下面这段代码，\code{else} 到底和哪个 \code{if} 配对？
+
+\begin{codebox}{dangling.c —— 悬空的 else}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 1;
+    int b = -1;
+
+    if (a > 0)
+        if (b > 0)
+            printf("a、b 都是正数\n");
+    else
+        printf("b 不是正数\n");
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+b 不是正数
+\end{outbox}
+
+C 语言的规则是：\textbf{\code{else} 与离它最近的、还没有配对的 \code{if} 配对}。所以这里的 \code{else} 属于内层 \code{if (b > 0)}，而不是外层。缩进在这件事上完全不起作用——编译器只看语法。
+
+\begin{pitfall}[用花括号消灭歧义]
+上面的代码如果本意是“\code{a} 不大于 0 时打印”，应该写成：
+\begin{codebox}{dangling-fixed.c —— 加花括号}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 1;
+    int b = -1;
+
+    if (a > 0) {
+        if (b > 0) {
+            printf("a、b 都是正数\n");
+        }
+    } else {
+        printf("a 不是正数\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+\textbf{只要 \code{if} 或 \code{else} 后面有嵌套，就一定加花括号}。
+\end{pitfall}
+
+\subsection{例：三个数中的最大值}
+
+\begin{example}
+输入三个整数，输出最大值。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{max3.c —— 三个数的最大值}
+#include <stdio.h>
+
+int main(void)
+{
+    int a, b, c, max;
+
+    printf("请输入三个整数：");
+    scanf("%d%d%d", &a, &b, &c);
+
+    if (a > b) {
+        if (a > c) {
+            max = a;
+        } else {
+            max = c;
+        }
+    } else {
+        if (b > c) {
+            max = b;
+        } else {
+            max = c;
+        }
+    }
+
+    printf("最大值是 %d\n", max);
+    return 0;
+}
+\end{codebox}
+
+也可以先令 \code{max = a}，再依次比较：
+\begin{codebox}{max3-simple.c —— 更简洁的写法}
+#include <stdio.h>
+
+int main(void)
+{
+    int a, b, c, max;
+
+    printf("请输入三个整数：");
+    scanf("%d%d%d", &a, &b, &c);
+
+    max = a;
+    if (b > max) {
+        max = b;
+    }
+    if (c > max) {
+        max = c;
+    }
+
+    printf("最大值是 %d\n", max);
+    return 0;
+}
+\end{codebox}
+后一种写法更容易扩展到 $n$ 个数，也更不容易出错。第 5 章学循环后，我们会用循环处理任意多个数。
+\end{solution}
+
+\section{\texttt{switch} 语句}
+
+\subsection{基本语法}
+
+当分支依据是“一个整数表达式的若干个确定取值”时，\code{switch} 比一长串 \code{else if} 更清楚。
+
+\begin{center}
+\fbox{\parbox{0.86\textwidth}{
+\ttfamily switch (表达式) \{ \\
+\phantom{xxxx}\ttfamily case 常量1: 语句; break; \\
+\phantom{xxxx}\ttfamily case 常量2: 语句; break; \\
+\phantom{xxxx}\ttfamily default: 语句; break; \\
+\ttfamily \}
+}}
+\end{center}
+
+\begin{itemize}
+  \item \code{switch} 后面的表达式必须是\textbf{整数类型}（\code{int}、\code{char}、\code{enum} 等），不能是 \code{double} 或字符串；
+  \item \code{case} 后面必须是\textbf{编译期常量}，不能是变量；
+  \item \code{break} 表示“跳出 \code{switch}”，没有 \code{break} 会继续往下执行（称为“贯穿”，fall-through）；
+  \item \code{default} 处理所有没有匹配到的情况，位置可以放在任意处，但习惯上放最后。
+\end{itemize}
+
+\begin{codebox}{switch-basic.c —— 根据数字输出星期}
+#include <stdio.h>
+
+int main(void)
+{
+    int day;
+
+    printf("请输入 1-7：");
+    scanf("%d", &day);
+
+    switch (day) {
+    case 1:
+        printf("星期一\n");
+        break;
+    case 2:
+        printf("星期二\n");
+        break;
+    case 3:
+        printf("星期三\n");
+        break;
+    case 4:
+        printf("星期四\n");
+        break;
+    case 5:
+        printf("星期五\n");
+        break;
+    case 6:
+        printf("星期六\n");
+        break;
+    case 7:
+        printf("星期日\n");
+        break;
+    default:
+        printf("输入不合法\n");
+        break;
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入 1-7：3
+星期三
+\end{outbox}
+
+\subsection{贯穿（fall-through）}
+
+如果某个 \code{case} 后面没有 \code{break}，程序会继续执行下一个 \code{case} 的语句，直到遇到 \code{break} 或 \code{switch} 结束。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,node distance=6mm]
+    \node[process,minimum width=30mm] (c1) at (0,0) {case 1};
+    \node[process,minimum width=30mm] (c2) at (0,-1.2) {case 2};
+    \node[process,minimum width=30mm] (c3) at (0,-2.4) {case 3};
+    \node[process,minimum width=30mm] (c4) at (0,-3.6) {case 4};
+    \draw[flow] (c1) -- node[lbl,right]{没有 break} (c2);
+    \draw[flow] (c2) -- node[lbl,right]{没有 break} (c3);
+    \draw[flow] (c3) -- node[lbl,right]{遇到 break} (c4);
+    \node[lbl,right=8mm of c4,align=left] {跳出 switch};
+  \end{tikzpicture}
+  \caption{没有 \texttt{break} 时会“贯穿”到下一个 \texttt{case}}
+  \label{fig:fallthrough}
+\end{figure}
+
+\begin{pitfall}[漏写 \texttt{break} 是最常见的 \texttt{switch} 错误]
+\begin{codebox}{switch-bug.c —— 漏写 break}
+#include <stdio.h>
+
+int main(void)
+{
+    int n = 1;
+
+    switch (n) {
+    case 1:
+        printf("one\n");
+    case 2:
+        printf("two\n");
+    case 3:
+        printf("three\n");
+        break;
+    default:
+        printf("other\n");
+        break;
+    }
+    return 0;
+}
+\end{codebox}
+输出是三行：\code{one}、\code{two}、\code{three}，而不是只有 \code{one}。
+\end{pitfall}
+
+\subsection{故意利用贯穿}
+
+有些场景下贯穿反而能简化代码，例如判断某个月有多少天：
+
+\begin{codebox}{days.c —— 月份天数}
+#include <stdio.h>
+
+int main(void)
+{
+    int month;
+    int year;
+    int days;
+
+    printf("请输入年份和月份：");
+    scanf("%d%d", &year, &month);
+
+    switch (month) {
+    case 1: case 3: case 5: case 7:
+    case 8: case 10: case 12:
+        days = 31;
+        break;
+    case 4: case 6: case 9: case 11:
+        days = 30;
+        break;
+    case 2:
+        if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) {
+            days = 29;
+        } else {
+            days = 28;
+        }
+        break;
+    default:
+        printf("月份不合法\n");
+        return 1;
+    }
+
+    printf("%d 年 %d 月有 %d 天\n", year, month, days);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入年份和月份：2024 2
+2024 年 2 月有 29 天
+\end{outbox}
+
+把多个 \code{case} 写在一起、共享同一段处理代码，是贯穿的正当用法。但要在代码里写注释说明“这是故意的”，避免后来的人误以为你漏了 \code{break}。
+
+\subsection{例：简易计算器}
+
+\begin{example}
+输入两个数和四则运算符（\code{+}、\code{-}、\code{*}、\code{/}），输出运算结果。除法要判断除数是否为 0。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{calc.c —— 简易计算器}
+#include <stdio.h>
+
+int main(void)
+{
+    double a, b;
+    char op;
+
+    printf("请输入表达式（如 3.5 + 2）：");
+    scanf("%lf %c %lf", &a, &op, &b);
+
+    switch (op) {
+    case '+':
+        printf("%.2f\n", a + b);
+        break;
+    case '-':
+        printf("%.2f\n", a - b);
+        break;
+    case '*':
+        printf("%.2f\n", a * b);
+        break;
+    case '/':
+        if (b == 0.0) {
+            printf("除数不能为 0\n");
+        } else {
+            printf("%.2f\n", a / b);
+        }
+        break;
+    default:
+        printf("不支持的运算符：%c\n", op);
+        break;
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入表达式（如 3.5 + 2）：3.5 * 2
+7.00
+\end{outbox}
+
+格式串 \texttt{"\%lf \%c \%lf"} 中，\texttt{\%c} 前面的空格很重要：它会跳过前面数字后面的空白字符（包括空格和换行），否则 \texttt{\%c} 可能读到一个空格。
+\end{solution}
+
+\section{分支的常见错误}
+
+\begin{center}
+\begin{tabular}{@{}p{0.36\textwidth}p{0.54\textwidth}@{}}
+\toprule
+错误写法 & 问题 \\
+\midrule
+\code{if (a = 5)} & 赋值，不是比较；条件永远为真 \\
+\code{if (a == 5);} & 多了一个分号，\code{if} 后面变成了空语句 \\
+\code{if (a > 0)} 后接多条语句但不加花括号 & 只有第一条受 \code{if} 控制 \\
+\code{if (0 < x < 10)} & 连写比较，结果永远为真 \\
+\texttt{if (a \& b)} & 按位与，不是逻辑与；应写 \texttt{\&\&} \\
+\code{if (x == 0.1)} & 浮点数直接比较，可能不相等 \\
+\code{switch (x)} 且 \code{x} 是 \code{double} & \code{switch} 只接受整数 \\
+\code{case 1.5:} & \code{case} 必须是整数常量 \\
+\code{default} 后忘记 \code{break} & 通常无害，但不规范 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[\texttt{if} 后面的分号]
+\begin{codebox}{if-semicolon.c —— 致命的空语句}
+if (a > 0);          /* 分号让 if 提前结束 */
+{
+    printf("a 是正数\n");   /* 这段代码永远执行 */
+}
+\end{codebox}
+编译器通常不会报错，甚至不会警告。看到 \code{if (...)} 后面紧跟分号，立刻警觉。
+\end{pitfall}
+
+\begin{tipbox}[条件里的“范围”怎么写]
+“\code{x} 在 0 到 10 之间”要写成 \texttt{x > 0 \&\& x < 10}；“\code{x} 不在 0 到 10 之间”写成 \code{x <= 0 || x >= 10}。注意逻辑或不是“与”的简单取反，写完后用边界值测试。
+\end{tipbox}
+
+\section{综合例题}
+
+\subsection{例：闰年判断}
+
+\begin{example}
+输入年份，判断是否为闰年。
+\end{example}
+\begin{solution}
+规则：能被 4 整除且不能被 100 整除，或者能被 400 整除。
+
+\begin{codebox}{leap.c —— 闰年判断}
+#include <stdio.h>
+
+int main(void)
+{
+    int year;
+
+    printf("请输入年份：");
+    scanf("%d", &year);
+
+    if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) {
+        printf("%d 年是闰年\n", year);
+    } else {
+        printf("%d 年不是闰年\n", year);
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入年份：2000
+2000 年是闰年
+\end{outbox}
+
+测试用例建议覆盖：1900（不是）、2000（是）、2024（是）、2023（不是）。
+\end{solution}
+
+\subsection{例：一元二次方程}
+
+\begin{example}
+输入 $a$、$b$、$c$，求方程 $ax^2 + bx + c = 0$ 的实根。要考虑 $a = 0$、判别式大于 0、等于 0、小于 0 四种情况。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{quadratic.c —— 一元二次方程}
+#include <stdio.h>
+#include <math.h>
+
+int main(void)
+{
+    double a, b, c;
+    double delta;
+    double x1, x2;
+
+    printf("请输入 a b c：");
+    scanf("%lf%lf%lf", &a, &b, &c);
+
+    if (a == 0.0) {
+        if (b == 0.0) {
+            printf("不是二次方程\n");
+        } else {
+            printf("x = %.2f\n", -c / b);
+        }
+    } else {
+        delta = b * b - 4 * a * c;
+        if (delta > 0.0) {
+            x1 = (-b + sqrt(delta)) / (2 * a);
+            x2 = (-b - sqrt(delta)) / (2 * a);
+            printf("两个实根：x1 = %.2f, x2 = %.2f\n", x1, x2);
+        } else if (delta == 0.0) {
+            x1 = -b / (2 * a);
+            printf("两个相等实根：x = %.2f\n", x1);
+        } else {
+            printf("没有实根\n");
+        }
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入 a b c：1 -3 2
+两个实根：x1 = 2.00, x2 = 1.00
+\end{outbox}
+
+\begin{note}
+在 Linux 上用 GCC 编译含 \file{math.h} 的程序时，需要在命令末尾加 \code{-lm} 链接数学库：\code{gcc quadratic.c -o quadratic -lm}。
+\end{note}
+\end{solution}
+
+\subsection{例：三角形判断}
+
+\begin{example}
+输入三条边长，判断能否构成三角形；如果能，再判断是等边、等腰还是普通三角形。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{triangle.c —— 三角形判断}
+#include <stdio.h>
+
+int main(void)
+{
+    double a, b, c;
+
+    printf("请输入三条边长：");
+    scanf("%lf%lf%lf", &a, &b, &c);
+
+    if (a + b > c && a + c > b && b + c > a) {
+        if (a == b && b == c) {
+            printf("等边三角形\n");
+        } else if (a == b || a == c || b == c) {
+            printf("等腰三角形\n");
+        } else {
+            printf("普通三角形\n");
+        }
+    } else {
+        printf("不能构成三角形\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入三条边长：3 3 5
+等腰三角形
+\end{outbox}
+
+\begin{pitfall}[浮点数判断相等的隐患]
+这里用 \code{==} 判断边长相等，对整数输入没问题；如果边长是计算出来的小数，应改用 \code{fabs(a - b) < 1e-9}。
+\end{pitfall}
+\end{solution}
+
+\subsection{例：出租车计费}
+
+\begin{example}
+某城市出租车计费规则：3 公里以内（含）收费 13 元；超过 3 公里的部分，每公里 2.5 元；超过 10 公里的部分，每公里加收 50\% 空驶费（即 3.75 元/公里）。输入行驶公里数，输出费用。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{taxi.c —— 分段计费}
+#include <stdio.h>
+
+int main(void)
+{
+    double km;
+    double fee;
+
+    printf("请输入公里数：");
+    scanf("%lf", &km);
+
+    if (km <= 3.0) {
+        fee = 13.0;
+    } else if (km <= 10.0) {
+        fee = 13.0 + (km - 3.0) * 2.5;
+    } else {
+        fee = 13.0 + 7.0 * 2.5 + (km - 10.0) * 2.5 * 1.5;
+    }
+
+    printf("费用 = %.2f 元\n", fee);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入公里数：12
+费用 = 38.00
+\end{outbox}
+
+分段计费是 \code{else if} 的典型场景：每一段都只计算“超出部分”，千万不要重复计算前面的里程。
+\end{solution}
+
+\section{拔高：让分支更好读}
+
+\subsection{卫语句：先处理异常，再处理正常}
+
+当嵌套很深时，可以把“不满足条件就提前结束”的情况放在前面：
+
+\begin{codebox}{guard.c —— 卫语句}
+#include <stdio.h>
+
+int main(void)
+{
+    int score;
+
+    printf("请输入成绩：");
+    scanf("%d", &score);
+
+    if (score < 0 || score > 100) {
+        printf("成绩不合法\n");
+        return 1;
+    }
+
+    if (score >= 60) {
+        printf("通过\n");
+    } else {
+        printf("未通过\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+先排除非法输入，后面的逻辑就不用再考虑它，代码更扁平。
+
+\subsection{表驱动：用数组代替一长串 \texttt{if}}
+
+如果分支是“输入一个编号，输出一个固定结果”，可以把结果放进数组，用下标直接取。第 6 章学完数组后，你会看到这种写法有多简洁。
+
+\subsection{分支预测}
+
+CPU 遇到 \code{if} 时会“猜”走哪条路，猜对了就快，猜错了要清空流水线。所以\textbf{把最可能发生的情况放在前面}，有时能提升性能。但对初学者来说，先保证正确和可读，性能是后话。
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.22\textwidth}p{0.68\textwidth}@{}}
+\toprule
+主题 & 要点 \\
+\midrule
+\code{if} & 条件非 0 则执行；建议总是加花括号 \\
+\code{if-else} & 二选一；两个分支必有一个执行 \\
+\code{else if} & 多路分支，从上到下命中即停；注意判断顺序 \\
+嵌套 & 分支里套分支；\code{else} 与最近未配对的 \code{if} 匹配 \\
+\code{switch} & 整数表达式 + 常量 \code{case}；\code{break} 跳出；可故意贯穿 \\
+常见错误 & \code{=} 与 \code{==}、多余分号、漏花括号、连写比较 \\
+综合应用 & 闰年、方程、三角形、计费、计算器 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[下一章预告]
+分支让程序会“选”，但还不会“重复”。如果要计算 1 到 100 的和，你总不能写一百行加法。下一章学习循环，让程序学会“重复再重复”。
+\end{tipbox}
+
+\begin{problemset}
+  \item 输入一个整数，判断它是正数、负数还是零。
+  \item 输入一个年份，判断是否为闰年（分别用 \code{if} 和逻辑表达式两种写法）。
+  \item 输入一个字符，判断它是大写字母、小写字母、数字还是其他字符。
+  \item 输入三个整数，按从小到大的顺序输出。
+  \item 输入学生成绩，输出等级（A/B/C/D/E），并处理非法输入。
+  \item 用 \code{switch} 实现：输入月份，输出该月所属的季节（春/夏/秋/冬）。
+  \item 输入一个一元二次方程的系数，输出实根（考虑各种情况）。
+  \item 输入三条边，判断能否构成三角形，并判断类型。
+  \item 解释 \code{if (a = 5)} 和 \code{if (a == 5)} 的区别。
+  \item 思考题：为什么 \code{switch} 的 \code{case} 后面不能是变量？如果一定要根据变量分支，应该怎么写？
+\end{problemset}

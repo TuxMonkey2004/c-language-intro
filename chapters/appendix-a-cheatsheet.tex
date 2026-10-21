@@ -1,0 +1,224 @@
+\chapter{C 语言速查表}
+\label{app:cheatsheet}
+
+本附录把全书最常用的语法、类型、格式符和标准库函数集中在一起，方便写代码时查阅。
+
+\section{关键字（C89）}
+
+C89 共有 32 个关键字，不能用作变量名或函数名：
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+\code{auto} & \code{break} & \code{case} & \code{char} \\
+\code{const} & \code{continue} & \code{default} & \code{do} \\
+\code{double} & \code{else} & \code{enum} & \code{extern} \\
+\code{float} & \code{for} & \code{goto} & \code{if} \\
+\code{int} & \code{long} & \code{register} & \code{return} \\
+\code{short} & \code{signed} & \code{sizeof} & \code{static} \\
+\code{struct} & \code{switch} & \code{typedef} & \code{union} \\
+\code{unsigned} & \code{void} & \code{volatile} & \code{while} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+C99 新增的 \code{inline}、\code{restrict}、\code{_Bool} 等不属于本书范围。
+
+\section{基本类型}
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+类型 & 典型大小 & 范围/精度 & 格式符 \\
+\midrule
+\code{char} & 1 & $-128 \sim 127$ & \texttt{\%c} 或 \texttt{\%d} \\
+\code{unsigned char} & 1 & $0 \sim 255$ & \texttt{\%u} \\
+\code{short} & 2 & $-32768 \sim 32767$ & \texttt{\%d} \\
+\code{unsigned short} & 2 & $0 \sim 65535$ & \texttt{\%u} \\
+\code{int} & 4 & 约 $\pm 21$ 亿 & \texttt{\%d} \\
+\code{unsigned int} & 4 & $0 \sim 4294967295$ & \texttt{\%u} \\
+\code{long} & 4/8 & 平台相关 & \texttt{\%ld} \\
+\code{float} & 4 & 约 6\textasciitilde7 位有效数字 & \texttt{\%f} \\
+\code{double} & 8 & 约 15\textasciitilde16 位有效数字 & \texttt{\%f} / \texttt{\%lf} \\
+\code{long double} & 8/16 & 平台相关 & \texttt{\%Lf} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{常用格式符}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+格式符 & 含义 & 例子 \\
+\midrule
+\texttt{\%d} & 有符号十进制整数 & \texttt{printf("\%d", -42);} \\
+\texttt{\%u} & 无符号十进制整数 & \texttt{printf("\%u", 42u);} \\
+\texttt{\%x} / \texttt{\%X} & 十六进制（小/大写） & \texttt{\%x} 输出 \code{ff} \\
+\texttt{\%o} & 八进制 & \\
+\texttt{\%c} & 字符 & \texttt{printf("\%c", 'A');} \\
+\texttt{\%s} & 字符串 & \texttt{printf("\%s", "hi");} \\
+\texttt{\%f} & 浮点，默认 6 位小数 & \texttt{printf("\%f", 3.14);} \\
+\texttt{\%.2f} & 保留 2 位小数 & \code{3.14} \\
+\texttt{\%8.2f} & 总宽 8、2 位小数 & 右对齐 \\
+\texttt{\%-8d} & 宽度 8、左对齐 & \\
+\texttt{\%05d} & 宽度 5、补 0 & \code{00042} \\
+\texttt{\%p} & 指针地址 & \texttt{(void *)\&a} \\
+\texttt{\%\%} & 一个百分号 & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{转义字符}
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+转义 & 含义 & 转义 & 含义 \\
+\midrule
+\texttt{\textbackslash n} & 换行 & \texttt{\textbackslash t} & 制表符 \\
+\texttt{\textbackslash r} & 回车 & \texttt{\textbackslash b} & 退格 \\
+\texttt{\textbackslash\textbackslash} & 反斜杠 & \texttt{\textbackslash "} & 双引号 \\
+\texttt{\textbackslash '} & 单引号 & \texttt{\textbackslash 0} & 空字符 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{运算符优先级（高到低）}
+
+\begin{center}
+\small
+\begin{tabular}{@{}clll@{}}
+\toprule
+优先级 & 运算符 & 含义 & 结合性 \\
+\midrule
+1 & \code{()} \code{[]} \code{->} \code{.} & 调用、下标、成员 & 左 \\
+2 & \code{!} \code{\~} \code{++} \code{--} \code{+} \code{-} \code{*} \texttt{\&} \code{(类型)} \code{sizeof} & 单目 & 右 \\
+3 & \code{*} \code{/} \texttt{\%} & 乘除余 & 左 \\
+4 & \code{+} \code{-} & 加减 & 左 \\
+5 & \code{<<} \code{>>} & 移位 & 左 \\
+6 & \code{<} \code{<=} \code{>} \code{>=} & 关系 & 左 \\
+7 & \code{==} \code{!=} & 相等 & 左 \\
+8 & \texttt{\&} & 按位与 & 左 \\
+9 & \code{\^} & 按位异或 & 左 \\
+10 & \code{|} & 按位或 & 左 \\
+11 & \texttt{\&\&} & 逻辑与 & 左 \\
+12 & \code{||} & 逻辑或 & 左 \\
+13 & \code{?:} & 条件 & 右 \\
+14 & 赋值类 & \code{= += -= ...} & 右 \\
+15 & \code{,} & 逗号 & 左 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{常用标准库函数}
+
+\subsection{\file{stdio.h}}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+函数 & 用途 \\
+\midrule
+\code{printf(fmt, ...)} & 格式化输出 \\
+\code{scanf(fmt, ...)} & 格式化输入（变量要加 \texttt{\&}） \\
+\code{getchar()} & 读一个字符 \\
+\code{putchar(c)} & 输出一个字符 \\
+\code{gets(s)} & 读一行（危险，不要用） \\
+\code{fgets(s, n, stdin)} & 安全地读一行 \\
+\code{puts(s)} & 输出字符串并换行 \\
+\code{fopen/fclose} & 打开/关闭文件 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{\file{string.h}}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+函数 & 用途 \\
+\midrule
+\code{strlen(s)} & 字符串长度（不含 \texttt{\textbackslash0}） \\
+\code{strcpy(dst, src)} & 复制字符串 \\
+\code{strncpy(dst, src, n)} & 最多复制 n 个字符 \\
+\code{strcat(dst, src)} & 连接字符串 \\
+\code{strcmp(a, b)} & 比较字符串，相等返回 0 \\
+\code{strchr(s, c)} & 查找字符 \\
+\code{strstr(s, sub)} & 查找子串 \\
+\code{memcpy(dst, src, n)} & 复制内存块 \\
+\code{memset(p, c, n)} & 填充内存块 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{\file{stdlib.h}}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+函数 & 用途 \\
+\midrule
+\code{malloc(size)} & 申请内存 \\
+\code{calloc(n, size)} & 申请并清零 \\
+\code{realloc(p, size)} & 调整内存大小 \\
+\code{free(p)} & 释放内存 \\
+\code{abs(n)} & 整数绝对值 \\
+\code{atoi(s)} & 字符串转整数 \\
+\code{qsort(...)} & 快速排序 \\
+\code{rand()/srand()} & 随机数 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{\file{math.h} 与 \file{ctype.h}}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+函数 & 用途 \\
+\midrule
+\code{sqrt(x)} & 平方根 \\
+\code{fabs(x)} & 浮点绝对值 \\
+\code{pow(x, y)} & 幂 \\
+\code{sin/cos/tan} & 三角函数（弧度） \\
+\code{isalpha(c)} & 是否字母 \\
+\code{isdigit(c)} & 是否数字 \\
+\code{toupper(c)/tolower(c)} & 大小写转换 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{常用代码片段}
+
+\begin{codebox}{snippets.c —— 常用片段}
+/* 交换两个整数 */
+temp = a; a = b; b = temp;
+
+/* 求数组最大值 */
+max = a[0];
+for (i = 1; i < n; i++) {
+    if (a[i] > max) max = a[i];
+}
+
+/* 遍历数组 */
+for (i = 0; i < n; i++) {
+    printf("%d ", a[i]);
+}
+
+/* 字符串长度（自己实现） */
+int len = 0;
+while (s[len] != '\0') len++;
+
+/* 判断闰年 */
+if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) {
+    /* 闰年 */
+}
+
+/* 动态数组 */
+p = (int *)malloc(n * sizeof(int));
+if (p == NULL) { /* 处理失败 */ }
+free(p);
+p = NULL;
+\end{codebox}

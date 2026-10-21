@@ -1,0 +1,169 @@
+\chapter{习题参考答案与提示}
+\label{app:answers}
+
+这里给出各章习题的参考答案。编程题只给关键思路或核心代码，完整程序请自己补全；如果和答案不同但能通过测试，也是好答案。
+
+\section{第 1 章}
+
+\begin{enumerate}
+  \item $(1010)_2=10$，$(1111\,0000)_2=240$，$(1000\,0001)_2=129$。
+  \item $13=(0000\,1101)_2=\mathrm{0D}_{16}$；$100=(0110\,0100)_2=\mathrm{64}_{16}$；$255=(1111\,1111)_2=\mathrm{FF}_{16}$。
+  \item $+17=0001\,0001$，取反 $1110\,1110$，加 1 得 \code{1110 1111}。
+  \item 取反得 $0001\,0010$，加 1 得 $0001\,0011=19$，所以原值为 $-19$。
+  \item \code{1000 0000} 被规定为 $-128$；8 位没有足够的位表示 $+128$，所以正数最大只到 127。
+  \item 用 \texttt{printf("\%d", (int)sizeof(int));} 等语句逐个打印，注意 \code{sizeof} 返回 \code{size_t}。
+  \item 输出为 0（不相等）。因为 0.1 和 0.2 在二进制中无法精确表示，相加结果与 0.3 有微小误差，不能用 \code{==} 比较。
+  \item 地址是内存单元的编号；字节序是多字节数据在内存中的排列顺序。小端把低字节放低地址，大端相反。
+  \item 预处理（展开头文件和宏）→ 编译（生成汇编）→ 汇编（生成目标文件）→ 链接（生成可执行文件）。
+  \item \code{unsigned char} 从 255 加 1 得到 0（模 256 回绕，行为明确）；\code{signed char} 从 127 加 1 是未定义行为，常见实现得到 $-128$，但不可依赖。
+\end{enumerate}
+
+\section{第 2 章}
+
+\begin{enumerate}
+  \item 用三次 \code{printf}，注意换行 \texttt{\textbackslash n}。
+  \item \texttt{printf("\%d \%d \%d \%d \%d", a+b, a-b, a*b, a/b, a\%b);}，除法是整数除法。
+  \item \code{c = (f - 32) * 5.0 / 9.0;}，用 \texttt{\%.2f} 输出。
+  \item 周长 \code{2 * 3.1415926 * r}，面积 \code{3.1415926 * r * r}。
+  \item 千位 \code{n / 1000}，百位 \texttt{n / 100 \% 10}，十位 \texttt{n / 10 \% 10}，个位 \texttt{n \% 10}，相加即可。
+  \item 三步交换：\code{temp = a; a = b; b = temp;}。
+  \item 错误：第一行 \code{int a = 1} 少分号；\code{sum} 未声明；\code{printf} 少分号。另外 \code{sum} 应先声明为 \code{int}。
+  \item \texttt{\%d} 要求 \code{int}，而 3.14 是 \code{double}，属于未定义行为；应写 \texttt{printf("\%f", 3.14);}。
+  \item 各位和：\texttt{n/100 + n/10\%10 + n\%10}；逆序：\texttt{(n\%10)*100 + (n/10\%10)*10 + n/100}。
+  \item \code{scanf} 需要把输入写到变量所在的内存，所以必须传地址；\code{printf} 只需要读取变量的值，传值即可。
+\end{enumerate}
+
+\section{第 3 章}
+
+\begin{enumerate}
+  \item \code{7/2=3}，\texttt{7\%2=1}，\code{-7/2=-3}（向零截断），\texttt{-7\%2=-1}（常见实现；C89 未强制规定）。
+  \item \texttt{n \% 2 != 0}，不要写 \code{== 1}（负数取余可能为 $-1$）。
+  \item \texttt{n \% 3 == 0 \&\& n \% 5 != 0}。
+  \item 判断第 0 位：\texttt{n \& 1}；第 2 位置 1：\code{n |= (1 << 2)}；第 3 位清零：\texttt{n \&= \textasciitilde{}(1 << 3)}。
+  \item 赋值运算符右结合，等价于 \code{a = (b = (c + 1))}：先算 \code{c+1}，赋给 \code{b}，再赋给 \code{a}。
+  \item \code{a = i++ + ++i;} 在同一个表达式中多次修改 \code{i}，属于未定义行为，结果不可预测。
+  \item \texttt{c >= 'a' \&\& c <= 'z'}（或 \code{islower(c)}）。
+  \item 比较时 \code{-1} 被转换成 \code{unsigned int}，变成 4294967295，所以 \code{-1 < 1U} 为假。
+  \item \code{max = (a > b) ? ((a > c) ? a : c) : ((b > c) ? b : c);}。
+  \item 左移超出类型宽度是未定义行为；有符号数左移溢出也可能是未定义行为。例如 \code{1 << 31} 对 32 位 \code{int} 是未定义的。
+\end{enumerate}
+
+\section{第 4 章}
+
+\begin{enumerate}
+  \item 用 \code{if (n > 0)}、\code{else if (n < 0)}、\code{else} 三种情况。
+  \item \texttt{if ((year \% 4 == 0 \&\& year \% 100 != 0) || (year \% 400 == 0))}。
+  \item 用字符范围判断：\texttt{c >= 'A' \&\& c <= 'Z'} 等；也可以包含 \file{ctype.h} 用 \code{isupper}、\code{islower}、\code{isdigit}。
+  \item 用三个 \code{if} 和临时变量两两比较交换，最后按 \code{a,b,c} 输出。
+  \item 先判断 \code{score < 0 || score > 100}，再用 \code{else if} 分档。
+  \item 用 \code{switch (month)}，把 3\textasciitilde5 归为春、6\textasciitilde8 归为夏、9\textasciitilde11 归为秋、12/1/2 归为冬。
+  \item 先处理 \code{a == 0}，再算判别式，分大于 0、等于 0、小于 0 三种情况。
+  \item 先判断 \texttt{a+b>c \&\& a+c>b \&\& b+c>a}，再判断等边、等腰、普通。
+  \item \code{if (a = 5)} 是赋值，条件永远为真；\code{if (a == 5)} 才是比较。
+  \item \code{case} 必须是编译期常量，变量不是常量。可以用 \code{if-else} 链，或用查表/函数。
+\end{enumerate}
+
+\section{第 5 章}
+
+\begin{enumerate}
+  \item 三种循环都能写：\code{for (i=1;i<=100;i++) sum+=i;}、\code{while (i<=100) {...}}、\code{do {...} while (i<=100);}。
+  \item \code{fact = fact * i;}。10! 能放进 \code{int}；13! = 6227020800 超出 32 位 \code{int}，会溢出。
+  \item 读第一个数初始化 \code{max}、\code{min}，循环读其余数并更新，同时累加求平均。
+  \item \texttt{if (i \% 3 == 0 || i \% 5 == 0)}，每输出一个计数，满 5 个换行。
+  \item 试除到 \code{i*i <= n}；外层循环枚举 2\textasciitilde100。
+  \item \code{f[0]=1; f[1]=1; for(i=2;i<30;i++) f[i]=f[i-1]+f[i-2];}。
+  \item 辗转相除得到 gcd，lcm = \code{a / gcd * b}（先除后乘，避免溢出）。
+  \item 枚举 100\textasciitilde999，拆出百、十、个位，判断立方和。
+  \item 用 \code{do-while} 数位数；用 \texttt{\%10} 求各位和；用 \texttt{rev = rev*10 + n\%10} 求逆序。
+  \item 数组下标范围是 \code{0..n-1}，\code{i <= n} 会访问 \code{a[n]}，越界。应改为 \code{i < n}。
+\end{enumerate}
+
+\section{第 6 章}
+
+\begin{enumerate}
+  \item 读入循环 \texttt{for (i=0;i<10;i++) scanf("\%d", \&a[i]);}，输出时用 \texttt{if (i\%5==4) printf("\textbackslash n");} 控制换行。
+  \item 同第 5 章第 3 题，只是数据存在数组里。
+  \item 双下标 \code{i=0, j=n-1}，\code{while (i<j)} 交换后向中间靠拢。
+  \item 遍历数组，\texttt{if (a[i]\%2==0) even++; else odd++;}。
+  \item \texttt{count[n\%10]++; n/=10;} 直到 \code{n==0}。
+  \item 维护 \code{low}、\code{high}，每次比较 \code{a[mid]}，并统计循环次数。
+  \item 用三重循环读入、相加、输出；转置输出 \code{a[j][i]}。
+  \item 先求平均，再遍历输出 \code{a[i] > average} 的元素及其下标。
+  \item \code{f[0]=1; f[1]=1;} 递推；第 30 项约为 832040，仍在 \code{int} 范围内，但再往后会溢出。
+  \item 数组作为函数参数会退化成指针，\code{sizeof(a)} 得到的是指针大小；应把长度作为参数传入。
+\end{enumerate}
+
+\section{第 7 章}
+
+\begin{enumerate}
+  \item \code{mid.x = (p1.x + p2.x) / 2;}，\code{mid.y} 同理（注意整数除法）。
+  \item \code{area = (r.x2 - r.x1) * (r.y2 - r.y1);}，周长 \code{2 * ((x2-x1) + (y2-y1))}。
+  \item 遍历结构体数组累加、比较，输出平均分和最高分学生。
+  \item 遍历数组，\code{if (s[i].score >= 60) pass++;}。
+  \item 依次比较年、月、日；可以用 \code{if} 嵌套或把日期转成“距某天的天数”。
+  \item 实部、虚部分别按复数公式计算。
+  \item 因为对齐会产生填充字节，\code{sizeof} 往往大于各成员大小之和；例如 \code{char+int+double} 在典型平台上为 16 字节。
+  \item 函数体里先执行 \texttt{p->score += x;}，再用 \texttt{if} 把超过 100 的成绩截断为 100。
+  \item 定义位域后直接给字段赋值，打印各字段和 \code{sizeof}。
+  \item 结构体可以整体赋值，编译器按成员逐个复制（包括填充字节）；数组名是常量，不能作为赋值目标。
+\end{enumerate}
+
+\section{第 8 章}
+
+\begin{enumerate}
+  \item \texttt{int *p = \&a;}，用 \code{*p} 输出值，\code{*p = 20;} 修改。
+  \item 函数内用临时变量交换 \code{*a} 和 \code{*b}。
+  \item \texttt{int *p; for (p = a; p < a + n; p++) printf("\%d ", *p);}。
+  \item 双指针 \code{left = a, right = a + n - 1}，交换后向中间移动。
+  \item 遍历一次同时维护 \code{max}、\code{min}、\code{sum}。
+  \item \code{p->score += x;}，超过 100 时截断。
+  \item \code{malloc} 后用冒泡排序，最后 \code{free(p); p = NULL;}。
+  \item \code{a} 和 \texttt{\&a[0]} 都是首元素地址（\code{int *}）；\texttt{\&a} 是“整个数组的地址”，加 1 会跳过整个数组。
+  \item \code{const int *p}：不能通过 p 改内容；\code{int * const p}：p 本身不能改指向，但内容可改。
+  \item 数组参数退化为指针，函数内部无法用 \code{sizeof} 求原数组长度，所以必须额外传 \code{n}。
+\end{enumerate}
+
+\section{第 9 章}
+
+\begin{enumerate}
+  \item \code{strlen(s)}；自己实现用循环数到 \texttt{\textbackslash0}。
+  \item \code{strcat(dst, src);}，确保 \code{dst} 足够大。
+  \item \code{strcmp(a, b)}，返回 0 相等，小于 0 表示 a 在前。
+  \item 遍历字符，用范围判断分类；注意跳过换行符。
+  \item \texttt{if (c >= 'a' \&\& c <= 'z') c = c - 32;}。
+  \item 双下标从两端向中间比较，全部相等则是回文。
+  \item 用 \code{in_word} 标志，从空白进入非空白时计数加 1。
+  \item 用读写双下标，遇到空格跳过，最后补 \texttt{\textbackslash0}。
+  \item \code{count[s[i] - 'a']++;}，最后输出非零项。
+  \item 字符数组在栈上复制了一份，可以修改；字符指针指向只读常量区，修改是未定义行为。
+\end{enumerate}
+
+\section{第 10 章}
+
+\begin{enumerate}
+  \item 冒泡排序外层控制轮数，内层相邻比较；每轮结束输出一次数组。
+  \item 选择排序把“找最小”改成“找最大”，交换到前面。
+  \item 插入排序中 \code{a[j] > key} 比较一次、\code{a[j+1]=a[j]} 移动一次，分别计数。
+  \item 希尔排序把间隔从 \code{n/2} 开始每次减半。
+  \item 归并排序先递归二分，再合并两个有序段；合并时输出临时数组。
+  \item 快速排序选基准划分，递归左右；每趟划分后输出数组。
+  \item 写 \code{cmp_student}，按 \code{score} 比较，调用 \code{qsort}。
+  \item 先排序，再用 \code{low/high/mid} 二分查找并计数。
+  \item 用 \code{clock()} 包住排序调用，计算 \code{(double)(end-start)/CLOCKS_PER_SEC}。
+  \item 选择排序会“跨距离交换”，可能把两个相等元素的相对顺序打乱。例如 \code{5a, 5b, 3}，第一轮把 3 和 5a 交换，得到 \code{3, 5b, 5a}，5a 和 5b 的顺序变了。
+\end{enumerate}
+
+\section{第 11 章}
+
+\begin{enumerate}
+  \item \texttt{\#define PI 3.1415926}，\texttt{\#define E 2.71828}，\texttt{\#define GOLDEN 1.618}。
+  \item \texttt{\#define SQUARE(x) ((x)*(x))}；\code{SQUARE(2+3)} 展开为 \code{((2+3)*(2+3))}=25。
+  \item \texttt{\#define MAX3(a,b,c) MAX(MAX(a,b),c)}，并保证 \code{MAX} 的参数都加括号。
+  \item \texttt{\#define SWAP(a,b) do \{ int t=(a); (a)=(b); (b)=t; \} while(0)}。
+  \item \texttt{\#define PRINT\_VAR(x) printf("\%s = \%d\textbackslash n", \#x, (x))}。
+  \item \texttt{\#define MAKE\_VAR(n) var\_\#\#n}，用 \code{MAKE_VAR(1)} 生成 \code{var_1}。
+  \item 用 \texttt{\#ifdef DEBUG} 包住调试输出，未定义 \code{DEBUG} 时编译为空。
+  \item 头文件写 \texttt{\#ifndef XXX\_H}、\texttt{\#define XXX\_H}、内容、\texttt{\#endif}。
+  \item 不加括号时 \code{SQUARE(2+3)} 会展开成 \code{2+3*2+3}=11；应写成 \code{((x)*(x))}。
+  \item \code{SQUARE(i++)} 展开为 \code{((i++)*(i++))}，\code{i} 被修改两次，属于未定义行为；先用临时变量保存 \code{i} 的值。
+\end{enumerate}

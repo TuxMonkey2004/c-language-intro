@@ -1,0 +1,201 @@
+\chapter{编译、调试与常见错误}
+\label{app:toolchain}
+
+本附录介绍如何安装编译器、编译运行 C 程序、读懂报错，以及用调试器定位问题。不同系统细节不同，但核心命令是相通的。
+
+\section{选择工具链}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+系统 & 推荐编译器 & 说明 \\
+\midrule
+Windows & MinGW-w64（GCC） & 免费，命令与 Linux 接近 \\
+Linux & GCC / Clang & 通常已预装 \\
+macOS & Clang & 安装 Xcode Command Line Tools \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+本书推荐 \textbf{MinGW-w64 + VS Code}：编辑器轻量，GCC 的报错信息清晰，和后面的嵌入式开发环境也接近。
+
+\section{Windows：安装 MinGW-w64}
+
+最简单的方式是通过 MSYS2：
+
+\begin{enumerate}
+  \item 从 \url{https://www.msys2.org/} 下载并安装 MSYS2；
+  \item 打开 MSYS2 UCRT64 终端，执行：
+\begin{outbox}{MSYS2 命令}
+pacman -S mingw-w64-ucrt-x86_64-gcc
+\end{outbox}
+  \item 把 \texttt{C:\textbackslash msys64\textbackslash ucrt64\textbackslash bin} 加入系统环境变量 \code{PATH}；
+  \item 打开新的命令行，执行 \code{gcc --version}，能显示版本号就成功了。
+\end{enumerate}
+
+\section{第一个程序的编译与运行}
+
+新建 \file{hello.c}：
+
+\begin{codebox}{hello.c}
+#include <stdio.h>
+
+int main(void)
+{
+    printf("Hello, world!\n");
+    return 0;
+}
+\end{codebox}
+
+在文件所在目录打开终端，执行：
+
+\begin{outbox}{编译与运行}
+gcc hello.c -o hello -std=c89 -Wall -Wextra -pedantic
+hello.exe        （Windows）
+./hello          （Linux / macOS）
+\end{outbox}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+参数 & 作用 \\
+\midrule
+\code{-o hello} & 指定输出文件名 \\
+\code{-std=c89} & 按 C89 标准编译（本书要求） \\
+\code{-Wall} & 打开常用警告 \\
+\code{-Wextra} & 打开更多警告 \\
+\code{-pedantic} & 严格按标准检查 \\
+\code{-g} & 生成调试信息（配合 gdb） \\
+\code{-lm} & 链接数学库（用了 \file{math.h} 时加在命令末尾） \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[把警告当错误看]
+初学阶段建议加 \code{-Wall -Wextra}。很多“能跑但结果不对”的 bug，编译器其实已经用警告提醒你了。更严格可以加 \code{-Werror}，把警告直接变成错误。
+\end{tipbox}
+
+\section{读懂错误信息}
+
+GCC 的报错格式通常是：
+
+\begin{outbox}{错误信息结构}
+文件名:行号:列号: error: 错误描述
+    源代码行
+    ^
+\end{outbox}
+
+例如：
+
+\begin{outbox}{示例}
+hello.c:5:5: error: expected ';' before 'return'
+     return 0;
+     ^~~~~~
+\end{outbox}
+
+意思是第 5 行 \code{return} 前面少了一个分号。\textbf{先看第一条错误}，后面的错误常常是连锁反应。
+
+\section{常见编译错误对照}
+
+\begin{center}
+\begin{tabular}{@{}p{0.42\textwidth}p{0.5\textwidth}@{}}
+\toprule
+错误信息 & 常见原因 \\
+\midrule
+\code{expected ';' before ...} & 上一行漏分号 \\
+\code{expected declaration or statement at end of input} & 花括号不配对 \\
+\code{'printf' undeclared} & 忘了 \texttt{\#include <stdio.h>} \\
+\code{implicit declaration of function} & 函数没声明或头文件没包含 \\
+\code{undefined reference to 'main'} & 没有 \code{main} 函数 \\
+\code{undefined reference to 'sqrt'} & 链接时忘了 \code{-lm} \\
+\code{ISO C90 forbids mixed declarations and code} & 声明写在了语句后面 \\
+\texttt{stray '\textbackslash 357' in program} & 用了中文标点 \\
+\code{variable-sized type used in sizeof} & C89 不允许变长数组 \\
+\code{assignment makes pointer from integer} & 指针类型不匹配 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{用 gdb 调试}
+
+如果程序能编译但运行结果不对，或者崩溃，可以用 gdb。
+
+\begin{outbox}{编译时加 -g，然后启动 gdb}
+gcc bug.c -o bug -g -std=c89 -Wall
+gdb bug.exe
+\end{outbox}
+
+常用命令：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+命令 & 作用 \\
+\midrule
+\code{run} & 运行程序 \\
+\code{break main} & 在 main 函数处下断点 \\
+\code{break 文件名:行号} & 在指定行下断点 \\
+\code{next} & 执行下一行（不进入函数） \\
+\code{step} & 执行下一行（进入函数） \\
+\code{print 变量} & 打印变量的值 \\
+\code{continue} & 继续运行到下一个断点 \\
+\code{quit} & 退出 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[没有 gdb 怎么办]
+用 \code{printf} 打印中间变量，同样能定位大部分问题。第 2 章介绍过这种方法。关键是：\textbf{在可疑的位置打印输入、中间结果和边界值}。
+\end{tipbox}
+
+\section{VS Code 配置}
+
+安装 VS Code 和 C/C++ 扩展后，在项目目录新建 \file{.vscode/tasks.json}：
+
+\begin{codebox}{tasks.json —— 编译任务}
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-std=c89", "-Wall", "-Wextra", "-pedantic", "-g",
+                "${file}", "-o", "${fileDirname}\\${fileBasenameNoExtension}.exe"
+            ],
+            "group": { "kind": "build", "isDefault": true }
+        }
+    ]
+}
+\end{codebox}
+
+按 \code{Ctrl+Shift+B} 即可编译。运行可以在终端手动执行生成的 \file{.exe}。
+
+\section{多文件项目}
+
+\begin{outbox}{编译多个源文件}
+gcc main.c math_utils.c -o app -std=c89 -Wall -Wextra
+\end{outbox}
+
+如果文件较多，可以写 Makefile 或使用 CMake。初学阶段先把“一个文件一个程序”练熟，再学分文件。
+
+\section{编码问题}
+
+\begin{itemize}
+  \item 源文件统一保存为 \textbf{UTF-8}（无 BOM）；
+  \item Windows 控制台默认可能是 GBK，输出中文可能乱码，可以执行 \code{chcp 65001} 切换到 UTF-8；
+  \item 不要在代码里混用中文全角标点和英文半角标点，这是编译错误的常见来源。
+\end{itemize}
+
+\section{推荐的学习流程}
+
+\begin{enumerate}
+  \item 先手写代码，不要复制粘贴；
+  \item 编译，打开所有警告；
+  \item 有错先读第一条错误信息，按行号定位；
+  \item 改完再编译，直到零警告；
+  \item 运行，用边界值测试；
+  \item 结果不对就打印中间变量或上调试器；
+  \item 最后把代码整理干净，加上必要注释。
+\end{enumerate}

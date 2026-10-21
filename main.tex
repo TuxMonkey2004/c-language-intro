@@ -1,0 +1,247 @@
+% ===========================================================================
+%  C 语言入门：从计算机组成到指针
+%  电控算法组新生培训教程
+%  用 ElegantBook 模板排版（lang=cn, scheme=chinese, color=blue）
+%  编译：xelatex main.tex （连编两次，目录与交叉引用才正确）
+% ===========================================================================
+\documentclass[lang=cn,newtx,10pt,scheme=chinese,color=blue]{elegantbook}
+
+\title{C 语言入门}
+\subtitle{从计算机组成到指针与算法\\[1ex]\large 电控算法组新生培训教程}
+\author{电控算法组}
+\institute{电控算法组 $\cdot$ 新生培训系列}
+\date{2026 年 10 月}
+\version{1.0}
+
+\extrainfo{先想清楚「数据长什么样」，再想清楚「步骤怎么走」。}
+
+\cover{assets/cover.pdf}
+\logo{assets/logo.pdf}
+
+% ------------------------- 宏包 -------------------------------------------
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds,shapes.geometric,
+  shapes.misc,decorations.pathreplacing,decorations.markings,patterns,
+  chains,matrix}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{longtable}
+
+% tcolorbox：代码盒、提示盒、拔高盒
+\tcbuselibrary{listings,breakable,skins}
+
+% ------------------------- 颜色 -------------------------------------------
+% 与模板主题蓝色协调：代码高亮 / 内存 / 指针 / 结论 / 提醒
+\definecolor{codekw}{RGB}{0,82,155}     % 关键字
+\definecolor{codestr}{RGB}{163,66,20}   % 字符串
+\definecolor{codecom}{RGB}{56,118,74}   % 注释
+\definecolor{codetype}{RGB}{120,60,140} % 类型名
+\definecolor{codebg}{RGB}{247,249,252}
+\definecolor{codeframe}{RGB}{205,214,228}
+\definecolor{memfill}{RGB}{232,241,252}
+\definecolor{memline}{RGB}{70,110,170}
+\definecolor{ptrfill}{RGB}{253,233,232}
+\definecolor{ptrline}{RGB}{190,70,60}
+\definecolor{okfill}{RGB}{232,246,236}
+\definecolor{okline}{RGB}{52,130,82}
+\definecolor{warnfill}{RGB}{255,246,228}
+\definecolor{warnline}{RGB}{198,130,30}
+\definecolor{deepfill}{RGB}{243,238,250}
+\definecolor{deepline}{RGB}{120,90,160}
+\definecolor{c89fill}{RGB}{235,244,247}
+\definecolor{c89line}{RGB}{60,120,140}
+
+% 封面分隔色带与封面图呼应
+\definecolor{covercyan}{RGB}{70,200,220}
+\colorlet{coverlinecolor}{covercyan}
+
+% 代码字体：Windows 上的 Consolas，接近大家在编辑器里看到的样子
+\setmonofont{Consolas}[Scale=0.92]
+
+% ------------------------- 代码排版 ---------------------------------------
+\lstdefinestyle{c89}{
+  language=C,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecom}\itshape,
+  stringstyle=\color{codestr},
+  numberstyle=\ttfamily\scriptsize\color{gray},
+  numbers=left,
+  numbersep=7pt,
+  stepnumber=1,
+  showstringspaces=false,
+  numberblanklines=true,
+  breaklines=true,
+  breakatwhitespace=false,
+  postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space},
+  tabsize=2,
+  columns=fullflexible,
+  keepspaces=true,
+  upquote=true,
+  extendedchars=true,
+  escapeinside={(*@}{@*)},
+  morekeywords={size_t,ssize_t,int8_t,int16_t,int32_t,uint8_t,uint16_t,uint32_t},
+}
+\lstset{style=c89}
+
+% 代码盒：\begin{codebox}{标题} ... \end{codebox}
+\newtcblisting{codebox}[1]{
+  enhanced, breakable, listing only,
+  colback=codebg, colframe=codeframe,
+  boxrule=0.5pt, arc=1.5mm,
+  left=1mm, right=2mm, top=1.2mm, bottom=1.2mm,
+  title={#1},
+  fonttitle=\small\bfseries,
+  coltitle=black,
+  colbacktitle=codeframe!55,
+  attach boxed title to top left={xshift=2mm,yshift=-2.2mm},
+  boxed title style={arc=1mm,boxrule=0pt},
+  listing options={style=c89}
+}
+
+% 运行结果盒：\begin{outbox}{标题} ... \end{outbox}
+\newtcblisting{outbox}[1]{
+  enhanced, breakable, listing only,
+  colback=white, colframe=black!25,
+  boxrule=0.4pt, arc=1mm,
+  left=2mm, right=2mm, top=1mm, bottom=1mm,
+  title={#1},
+  fonttitle=\small\bfseries,
+  coltitle=black,
+  colbacktitle=black!8,
+  attach boxed title to top left={xshift=2mm,yshift=-2mm},
+  boxed title style={arc=0.8mm,boxrule=0pt},
+  listing options={language=,basicstyle=\ttfamily\small,numbers=none,
+    keywordstyle=,commentstyle=,stringstyle=,columns=fullflexible,
+    showstringspaces=false,breaklines=true}
+}
+
+% ------------------------- 提示盒子 ---------------------------------------
+\newtcolorbox{tipbox}[1][小贴士]{
+  enhanced, breakable,
+  colback=okfill, colframe=okline,
+  fonttitle=\bfseries, title={#1},
+  boxrule=0.5pt, arc=1.5mm, left=2mm, right=2mm, top=1.5mm, bottom=1.5mm,
+  attach boxed title to top left={xshift=3mm,yshift=-2.2mm},
+  boxed title style={colback=okline,arc=1mm},
+  coltitle=white,
+}
+\newtcolorbox{pitfall}[1][小心有坑]{
+  enhanced, breakable,
+  colback=warnfill, colframe=warnline,
+  fonttitle=\bfseries, title={#1},
+  boxrule=0.5pt, arc=1.5mm, left=2mm, right=2mm, top=1.5mm, bottom=1.5mm,
+  attach boxed title to top left={xshift=3mm,yshift=-2.2mm},
+  boxed title style={colback=warnline,arc=1mm},
+  coltitle=white,
+}
+\newtcolorbox{deepbox}[1][拔高阅读：可以以后再回来看]{
+  enhanced, breakable,
+  colback=deepfill, colframe=deepline,
+  fonttitle=\bfseries, title={#1},
+  boxrule=0.5pt, arc=1.5mm, left=2mm, right=2mm, top=1.5mm, bottom=1.5mm,
+  attach boxed title to top left={xshift=3mm,yshift=-2.2mm},
+  boxed title style={colback=deepline,arc=1mm},
+  coltitle=white,
+}
+\newtcolorbox{c89box}[1][C89 约定]{
+  enhanced, breakable,
+  colback=c89fill, colframe=c89line,
+  fonttitle=\bfseries, title={#1},
+  boxrule=0.5pt, arc=1.5mm, left=2mm, right=2mm, top=1.5mm, bottom=1.5mm,
+  attach boxed title to top left={xshift=3mm,yshift=-2.2mm},
+  boxed title style={colback=c89line,arc=1mm},
+  coltitle=white,
+}
+
+% ------------------------- 记号与命令 -------------------------------------
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}      % 行内代码（自动处理反斜杠、下划线等）
+\newcommand{\en}[1]{\textit{#1}}                   % 英文术语
+\newcommand{\term}[1]{\textbf{#1}}                 % 首次出现的术语
+\newcommand{\file}[1]{\texttt{#1}}                 % 文件名
+\newcommand{\key}[1]{\textbf{#1}}                  % 强调
+\newcommand{\cnum}[1]{{\CJKfamily{zhkai}#1}}       % 圈码/楷体小字
+\newcommand{\ptr}{\textcolor{ptrline}{$\bullet$}}  % 指针记号
+
+% 章首一句话
+\newcommand{\chaptermotto}[1]{%
+  \begin{flushright}
+    \kaishu\small\color{black!55}#1
+  \end{flushright}
+  \vspace{-0.6em}
+}
+
+% TikZ 通用样式
+\tikzset{
+  box/.style={draw=structurecolor,fill=structurecolor!8,rounded corners=2pt,
+    align=center,minimum height=8mm,inner sep=3pt,font=\small},
+  cpubox/.style={draw=structurecolor!80!black,fill=structurecolor!12,
+    rounded corners=2pt,align=center,minimum height=10mm,
+    minimum width=26mm,font=\small\bfseries},
+  membox/.style={draw=memline,fill=memfill,minimum width=12mm,
+    minimum height=7mm,font=\ttfamily\small,inner sep=1pt,align=center},
+  emptybox/.style={draw=memline,dashed,fill=white,minimum width=12mm,
+    minimum height=7mm,font=\ttfamily\small,inner sep=1pt,align=center},
+  ptrbox/.style={draw=ptrline,fill=ptrfill,minimum width=14mm,
+    minimum height=7mm,font=\ttfamily\small,inner sep=1pt,align=center},
+  bus/.style={draw=structurecolor!70,line width=1.2pt},
+  ptr/.style={-{Stealth[length=2.2mm]},draw=ptrline,line width=0.9pt},
+  flow/.style={-{Stealth[length=2mm]},draw=structurecolor!80,line width=0.7pt},
+  decision/.style={diamond,draw=structurecolor!80!black,fill=structurecolor!8,
+    aspect=2,align=center,inner sep=1pt,font=\small},
+  process/.style={rectangle,draw=structurecolor!80!black,fill=structurecolor!8,
+    rounded corners=2pt,align=center,minimum width=28mm,minimum height=8mm,
+    font=\small},
+  io/.style={trapezium,trapezium left angle=70,trapezium right angle=110,
+    draw=structurecolor!80!black,fill=structurecolor!8,align=center,
+    minimum width=30mm,inner sep=2pt,font=\small},
+  terminator/.style={rounded rectangle,draw=structurecolor!80!black,
+    fill=structurecolor!12,align=center,minimum width=20mm,minimum height=7mm,
+    font=\small},
+  lbl/.style={font=\scriptsize,color=black!60},
+  arr/.style={-{Stealth[length=2mm]},draw=black!60,line width=0.6pt},
+}
+
+\hypersetup{
+  pdftitle={C 语言入门：从计算机组成到指针},
+  pdfauthor={电控算法组},
+  pdfsubject={电控算法组新生培训教程（C89/C90）},
+  pdfkeywords={C 语言, C89, 指针, 数据结构, 排序, 新生培训}
+}
+\setcounter{tocdepth}{1}
+\setcounter{secnumdepth}{2}
+
+\begin{document}
+
+\maketitle
+\frontmatter
+\input{chapters/00-preface}
+
+\tableofcontents
+
+\mainmatter
+
+\input{chapters/ch01-computer}
+\input{chapters/ch02-sequence}
+\input{chapters/ch03-operators}
+\input{chapters/ch04-branch}
+\input{chapters/ch05-loop}
+\input{chapters/ch06-array}
+\input{chapters/ch07-struct}
+\input{chapters/ch08-pointer}
+\input{chapters/ch09-string}
+\input{chapters/ch10-sort}
+\input{chapters/ch11-macro}
+
+\appendix
+\input{chapters/appendix-a-cheatsheet}
+\input{chapters/appendix-b-toolchain}
+\input{chapters/appendix-c-answers}
+\input{chapters/appendix-d-glossary}
+\input{chapters/appendix-e-function}
+
+\end{document}

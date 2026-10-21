@@ -1,0 +1,283 @@
+\chapter{函数速查（补充）}
+\label{app:function}
+
+本书的章节表里没有单独安排“函数”一章，但后面的结构体、指针、排序都用到了函数。本附录把函数的必要语法补齐，够你读懂和编写本书的代码。
+
+\section{函数的定义与调用}
+
+\begin{codebox}{function-basic.c —— 定义一个函数}
+#include <stdio.h>
+
+int add(int a, int b)
+{
+    int sum;
+
+    sum = a + b;
+    return sum;
+}
+
+int main(void)
+{
+    int result;
+
+    result = add(3, 5);
+    printf("%d\n", result);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+8
+\end{outbox}
+
+函数定义由四部分组成：
+
+\begin{itemize}
+  \item \textbf{返回类型}：\code{int} 表示函数返回一个整数；不返回任何值写 \code{void}；
+  \item \textbf{函数名}：\code{add}，遵循标识符命名规则；
+  \item \textbf{参数列表}：\code{(int a, int b)}，没有参数写 \code{(void)}；
+  \item \textbf{函数体}：花括号里的语句，用 \code{return} 返回结果。
+\end{itemize}
+
+\begin{pitfall}[C89 的参数声明]
+C89 支持 \code{int add(int a, int b)} 这种写法，但 \code{return} 的类型和参数类型都必须写清楚。不要写 \code{add(a, b)} 这种“隐式 int”的老式写法。
+\end{pitfall}
+
+\section{返回值与 \texttt{void}}
+
+\begin{codebox}{function-void.c —— 不返回值的函数}
+#include <stdio.h>
+
+void print_line(int n)
+{
+    int i;
+
+    for (i = 0; i < n; i++) {
+        printf("-");
+    }
+    printf("\n");
+}
+
+int main(void)
+{
+    print_line(20);
+    return 0;
+}
+\end{codebox}
+
+\code{void} 函数可以用 \code{return;} 提前结束，但不能返回一个值。
+
+\begin{codebox}{function-early.c —— 提前返回}
+int safe_divide(int a, int b)
+{
+    if (b == 0) {
+        return 0;       /* 简单处理：除数为 0 返回 0 */
+    }
+    return a / b;
+}
+\end{codebox}
+
+\section{函数声明（原型）}
+
+如果函数定义在 \code{main} 之后，或者跨文件使用，需要先声明：
+
+\begin{codebox}{function-prototype.c —— 函数原型}
+#include <stdio.h>
+
+int add(int a, int b);      /* 声明：告诉编译器有这样的函数 */
+
+int main(void)
+{
+    printf("%d\n", add(3, 5));
+    return 0;
+}
+
+int add(int a, int b)       /* 定义 */
+{
+    return a + b;
+}
+\end{codebox}
+
+C89 不要求参数名与声明一致，但类型必须一致。养成“先声明、后使用”的习惯。
+
+\section{参数传递}
+
+\subsection{按值传递}
+
+C 语言的参数默认是\textbf{按值传递}：函数拿到的是实参的副本，修改副本不影响原件。
+
+\begin{codebox}{pass-value.c —— 按值传递}
+#include <stdio.h>
+
+void change(int x)
+{
+    x = 100;
+}
+
+int main(void)
+{
+    int a = 10;
+
+    change(a);
+    printf("%d\n", a);      /* 仍然是 10 */
+    return 0;
+}
+\end{codebox}
+
+\subsection{传地址}
+
+要让函数修改调用者的变量，传指针：
+
+\begin{codebox}{pass-pointer.c —— 传地址}
+#include <stdio.h>
+
+void change(int *p)
+{
+    *p = 100;
+}
+
+int main(void)
+{
+    int a = 10;
+
+    change(&a);
+    printf("%d\n", a);      /* 100 */
+    return 0;
+}
+\end{codebox}
+
+\subsection{数组参数}
+
+数组作为参数会退化成指针，必须额外传长度：
+
+\begin{codebox}{pass-array.c —— 数组参数}
+int sum_array(int a[], int n)
+{
+    int i;
+    int sum = 0;
+
+    for (i = 0; i < n; i++) {
+        sum = sum + a[i];
+    }
+    return sum;
+}
+\end{codebox}
+
+\section{递归}
+
+函数可以直接或间接调用自己，这叫递归。递归必须有\textbf{终止条件}，否则会无限递归导致栈溢出。
+
+\begin{codebox}{recursion.c —— 递归求阶乘}
+int factorial(int n)
+{
+    if (n <= 1) {
+        return 1;               /* 终止条件 */
+    }
+    return n * factorial(n - 1); /* 递归调用 */
+}
+\end{codebox}
+
+递归适合描述“问题可以分解成同样形式的小问题”，例如阶乘、斐波那契、归并排序、快速排序、树的遍历。递归的缺点是调用层次深时占用栈空间大。
+
+\section{作用域与存储类别}
+
+\begin{itemize}
+  \item \textbf{局部变量}：定义在函数或块内，只在块内可见，函数返回后失效；
+  \item \textbf{全局变量}：定义在所有函数之外，整个程序可见，默认初始化为 0；
+  \item \code{static} 局部变量：只初始化一次，函数返回后值仍然保留；
+  \item \code{static} 全局变量/函数：只在当前源文件可见。
+\end{itemize}
+
+\begin{codebox}{scope.c —— 作用域示例}
+#include <stdio.h>
+
+int global_count = 0;       /* 全局变量 */
+
+void f(void)
+{
+    int local = 0;          /* 每次调用都重新初始化 */
+    static int calls = 0;   /* 只初始化一次，跨调用保留 */
+
+    local++;
+    calls++;
+    global_count++;
+
+    printf("local=%d, calls=%d, global=%d\n",
+           local, calls, global_count);
+}
+\end{codebox}
+
+\section{多文件编程}
+
+大型程序通常拆成多个源文件和头文件：
+
+\begin{codebox}{math\_utils.h —— 头文件}
+#ifndef MATH_UTILS_H
+#define MATH_UTILS_H
+
+int add(int a, int b);
+int max_int(int a, int b);
+
+#endif
+\end{codebox}
+
+\begin{codebox}{math\_utils.c —— 实现文件}
+#include "math_utils.h"
+
+int add(int a, int b)
+{
+    return a + b;
+}
+
+int max_int(int a, int b)
+{
+    return (a > b) ? a : b;
+}
+\end{codebox}
+
+\begin{codebox}{main.c —— 使用函数}
+#include <stdio.h>
+#include "math_utils.h"
+
+int main(void)
+{
+    printf("%d\n", add(2, 3));
+    return 0;
+}
+\end{codebox}
+
+编译命令：
+
+\begin{outbox}{命令行}
+gcc main.c math_utils.c -o app -std=c89 -Wall
+\end{outbox}
+
+\begin{tipbox}[头文件里只放声明]
+头文件放函数声明、宏、类型定义；函数实现放在 \code{.c} 文件里。头文件用 \texttt{\#ifndef} 保护，避免重复包含。
+\end{tipbox}
+
+\section{函数的常见错误}
+
+\begin{center}
+\begin{tabular}{@{}p{0.38\textwidth}p{0.52\textwidth}@{}}
+\toprule
+错误 & 后果 \\
+\midrule
+声明与定义参数类型不一致 & 编译错误或运行异常 \\
+调用函数前没有声明 & 隐式声明警告，C99 起报错 \\
+函数没有 \code{return} 却使用返回值 & 未定义行为 \\
+递归没有终止条件 & 栈溢出崩溃 \\
+数组参数忘记传长度 & 越界访问 \\
+返回局部数组的地址 & 悬空指针 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[函数设计的三条建议]
+\begin{enumerate}
+  \item 一个函数只做一件事；
+  \item 函数名用动词，参数和返回值类型写清楚；
+  \item 函数尽量短，超过一屏就考虑拆分。
+\end{enumerate}
+\end{tipbox}

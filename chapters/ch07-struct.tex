@@ -1,0 +1,778 @@
+\chapter{结构体：古希腊掌管分类的神}
+
+\begin{introduction}
+  \item 为什么需要结构体：把不同类型的数据打包成一个整体
+  \item 结构体的定义、声明、初始化与成员访问
+  \item \texttt{typedef} 与嵌套结构体
+  \item 结构体数组与结构体作为函数参数
+  \item 内存对齐：结构体到底占多少字节
+  \item 位域与联合体（拔高）
+\end{introduction}
+
+\chaptermotto{「世界不是由同一种东西组成的，程序也不该只用一种类型描述世界。」}
+
+数组很优雅，但它有一个前提：所有元素类型相同。可现实中的一个“学生”包含学号（整数）、姓名（字符串）、成绩（小数），类型各不相同。你当然可以用三个平行数组分别存，但数据一旦多了，维护起来就是灾难。
+
+结构体（structure）就是为此而生：它把若干个不同类型的数据打包成一个整体，给这个整体起一个名字。学会结构体，你就从“处理数据”迈向了“描述对象”。
+
+\section{为什么需要结构体}
+
+假设要管理 3 个学生的信息。用平行数组的写法是这样的：
+
+\begin{codebox}{parallel-arrays.c —— 用平行数组存学生信息}
+#include <stdio.h>
+
+int main(void)
+{
+    int ids[3] = {1001, 1002, 1003};
+    char names[3][20] = {"Alice", "Bob", "Carol"};
+    double scores[3] = {92.5, 78.0, 85.5};
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        printf("%d %s %.1f\n", ids[i], names[i], scores[i]);
+    }
+
+    return 0;
+}
+\end{codebox}
+
+这个写法的问题在于：三个数组必须\textbf{一一对应}。如果排序时只交换了 \code{scores}，忘了同步交换 \code{ids} 和 \code{names}，数据就全乱了。新增一个字段（比如年龄）还要再开一个数组，处处要同步。
+
+结构体把“一个学生的所有信息”绑在一起：
+
+\begin{codebox}{struct-student.c —— 用结构体存学生信息}
+#include <stdio.h>
+
+struct Student {
+    int id;
+    char name[20];
+    double score;
+};
+
+int main(void)
+{
+    struct Student s;
+
+    s.id = 1001;
+    s.score = 92.5;
+    /* s.name 是字符数组，赋值方式第 9 章讲，这里先用初始化 */
+
+    printf("%d %.1f\n", s.id, s.score);
+    return 0;
+}
+\end{codebox}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % 平行数组
+    \node[font=\small\bfseries] at (0,3.0) {平行数组};
+    \node[membox,minimum width=2.4cm] (id0) at (0,2.2) {1001};
+    \node[membox,minimum width=2.4cm,right=0mm of id0] (id1) {1002};
+    \node[membox,minimum width=2.4cm,right=0mm of id1] (id2) {1003};
+    \node[font=\scriptsize,color=black!55,left=1mm of id0] {ids};
+
+    \node[membox,minimum width=2.4cm] (nm0) at (0,1.3) {Alice};
+    \node[membox,minimum width=2.4cm,right=0mm of nm0] (nm1) {Bob};
+    \node[membox,minimum width=2.4cm,right=0mm of nm1] (nm2) {Carol};
+    \node[font=\scriptsize,color=black!55,left=1mm of nm0] {names};
+
+    \node[membox,minimum width=2.4cm] (sc0) at (0,0.4) {92.5};
+    \node[membox,minimum width=2.4cm,right=0mm of sc0] (sc1) {78.0};
+    \node[membox,minimum width=2.4cm,right=0mm of sc1] (sc2) {85.5};
+    \node[font=\scriptsize,color=black!55,left=1mm of sc0] {scores};
+
+    % 结构体数组
+    \node[font=\small\bfseries] at (9.2,3.0) {结构体数组};
+    \node[draw=structurecolor!70,fill=structurecolor!6,rounded corners=2mm,
+          minimum width=3.2cm,minimum height=1.1cm,align=left,font=\scriptsize] (st0) at (9.2,2.2)
+      {id: 1001\\name: Alice\\score: 92.5};
+    \node[draw=structurecolor!70,fill=structurecolor!6,rounded corners=2mm,
+          minimum width=3.2cm,minimum height=1.1cm,align=left,font=\scriptsize,below=2mm of st0] (st1)
+      {id: 1002\\name: Bob\\score: 78.0};
+    \node[draw=structurecolor!70,fill=structurecolor!6,rounded corners=2mm,
+          minimum width=3.2cm,minimum height=1.1cm,align=left,font=\scriptsize,below=2mm of st1] (st2)
+      {id: 1003\\name: Carol\\score: 85.5};
+    \node[font=\scriptsize,color=black!55,right=2mm of st1] {每人一“包”};
+  \end{tikzpicture}
+  \caption{平行数组 vs.\ 结构体数组：后者把一个人的信息绑在一起}
+  \label{fig:struct-vs-parallel}
+\end{figure}
+
+\section{结构体的定义与使用}
+
+\subsection{定义}
+
+\begin{center}
+\fbox{\parbox{0.82\textwidth}{
+\ttfamily struct 结构体名 \{ \\
+\phantom{xxxx}类型 成员1; \\
+\phantom{xxxx}类型 成员2; \\
+\phantom{xxxx}... \\
+\ttfamily \}; \quad /* 注意这个分号 */
+}}
+\end{center}
+
+\begin{codebox}{struct-def.c —— 定义一个学生结构体}
+struct Student {
+    int id;             /* 学号 */
+    char name[20];      /* 姓名 */
+    double score;       /* 成绩 */
+};
+\end{codebox}
+
+\begin{pitfall}[结构体定义末尾的分号不能少]
+\texttt{struct Student \{ ... \};} 最后的分号是定义的一部分，漏掉会导致一连串奇怪的编译错误。这个分号很容易忘，因为函数定义后面不写分号。
+\end{pitfall}
+
+\code{struct Student} 是一个\textbf{类型名}，就像 \code{int} 一样。注意：\code{Student} 单独使用不合法，必须写 \code{struct Student}，除非用 \code{typedef} 起别名（见后文）。
+
+\subsection{声明变量与访问成员}
+
+\begin{codebox}{struct-use.c —— 声明、初始化、访问成员}
+#include <stdio.h>
+
+struct Student {
+    int id;
+    char name[20];
+    double score;
+};
+
+int main(void)
+{
+    struct Student s1;
+    struct Student s2 = {1002, "Bob", 78.0};
+
+    s1.id = 1001;
+    s1.score = 92.5;
+
+    printf("s1: %d, %.1f\n", s1.id, s1.score);
+    printf("s2: %d, %s, %.1f\n", s2.id, s2.name, s2.score);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+s1: 1001, 92.5
+s2: 1002, Bob, 78.0
+\end{outbox}
+
+访问成员用点号 \code{.}，读作“的”：\code{s1.id} 就是“s1 的 id”。
+
+\subsection{整体赋值}
+
+和数组不同，\textbf{同类型的结构体变量可以整体赋值}，编译器会把所有成员逐字节复制过去：
+
+\begin{codebox}{struct-assign.c —— 结构体整体赋值}
+#include <stdio.h>
+
+struct Point {
+    int x;
+    int y;
+};
+
+int main(void)
+{
+    struct Point p1 = {3, 4};
+    struct Point p2;
+
+    p2 = p1;        /* 合法：把 p1 的所有成员复制给 p2 */
+
+    printf("p2 = (%d, %d)\n", p2.x, p2.y);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+p2 = (3, 4)
+\end{outbox}
+
+\subsection{\texttt{typedef}：给类型起别名}
+
+每次写 \code{struct Student} 有点啰嗦。可以用 \code{typedef} 起一个别名：
+
+\begin{codebox}{typedef-struct.c —— typedef 的两种写法}
+/* 写法一：先定义，再起别名 */
+struct Student {
+    int id;
+    char name[20];
+    double score;
+};
+typedef struct Student Student;
+
+/* 写法二：定义的同时起别名（更常用） */
+typedef struct {
+    int x;
+    int y;
+} Point;
+\end{codebox}
+
+之后就可以直接写 \code{Student s;}、\code{Point p;}，和 \code{int a;} 一样自然。
+
+\begin{tipbox}[本书的风格]
+本书在需要频繁使用某个结构体时，会用 \code{typedef} 起一个首字母大写的别名；只在定义处出现一次的结构体，可以直接用 \code{struct} 写法。
+\end{tipbox}
+
+\subsection{嵌套结构体}
+
+结构体的成员也可以是另一个结构体：
+
+\begin{codebox}{nested-struct.c —— 嵌套结构体}
+#include <stdio.h>
+
+typedef struct {
+    int year;
+    int month;
+    int day;
+} Date;
+
+typedef struct {
+    int id;
+    char name[20];
+    Date birthday;      /* 成员是另一个结构体 */
+    double score;
+} Student;
+
+int main(void)
+{
+    Student s = {1001, "Alice", {2005, 6, 18}, 92.5};
+
+    printf("%s 出生于 %d 年 %d 月 %d 日\n",
+           s.name, s.birthday.year, s.birthday.month, s.birthday.day);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+Alice 出生于 2005 年 6 月 18 日
+\end{outbox}
+
+访问嵌套成员就一层层点下去：\code{s.birthday.year}。
+
+\section{结构体在内存里长什么样}
+
+结构体的成员按声明顺序依次存放，但\textbf{不一定紧挨着}——编译器会在成员之间插入“填充字节”（padding），让每个成员的地址满足对齐要求。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % 标尺
+    \foreach \i in {0,...,15} {
+      \node[font=\scriptsize,color=black!45] at (\i*0.9+0.45,1.3) {\i};
+    }
+    % 成员
+    \draw[structurecolor!70,fill=ptrfill] (0,0) rectangle (0.9,-1.2);
+    \node[font=\scriptsize] at (0.45,-0.6) {a};
+    \draw[black!15,fill=black!6] (0.9,0) rectangle (3.6,-1.2);
+    \node[font=\scriptsize,color=black!45] at (2.25,-0.6) {填充};
+    \draw[structurecolor!70,fill=structurecolor!12] (3.6,0) rectangle (7.2,-1.2);
+    \node[font=\scriptsize] at (5.4,-0.6) {b};
+    \draw[structurecolor!70,fill=okfill] (7.2,0) rectangle (14.4,-1.2);
+    \node[font=\scriptsize] at (10.8,-0.6) {c};
+
+    \node[font=\scriptsize,color=black!55,below] at (0.45,-1.2) {偏移 0};
+    \node[font=\scriptsize,color=black!55,below] at (5.4,-1.2) {偏移 4};
+    \node[font=\scriptsize,color=black!55,below] at (10.8,-1.2) {偏移 8};
+    \node[font=\scriptsize,color=black!55,below] at (14.4,-1.2) {总大小 16};
+  \end{tikzpicture}
+  \caption{\texttt{struct \{ char a; int b; double c; \}} 的内存布局（典型 8 字节对齐）}
+  \label{fig:struct-padding}
+\end{figure}
+
+为什么需要对齐？因为 CPU 读取内存时，按“字”对齐的访问速度最快，某些架构甚至不允许非对齐访问。编译器为了性能，会在成员之间补空。
+
+\begin{codebox}{sizeof-struct.c —— 结构体的大小}
+#include <stdio.h>
+
+struct A {
+    char a;
+    int b;
+    double c;
+};
+
+struct B {
+    char a;
+    char b;
+    int c;
+};
+
+int main(void)
+{
+    printf("sizeof(struct A) = %d\n", (int)sizeof(struct A));
+    printf("sizeof(struct B) = %d\n", (int)sizeof(struct B));
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（典型 64 位环境）}
+sizeof(struct A) = 16
+sizeof(struct B) = 8
+\end{outbox}
+
+\code{struct A} 的成员一共 $1 + 4 + 8 = 13$ 字节，但因为对齐，实际占 16 字节。\code{struct B} 的两个 \code{char} 挤在一起，后面补 2 字节再放 \code{int}，共 8 字节。
+
+\begin{tipbox}[省内存的小技巧]
+把成员按“从大到小”排列，通常能减少填充。例如 \texttt{struct \{double c; int b; char a;\}} 在很多平台上只占 16 字节，而 \texttt{\{char a; int b; double c;\}} 也是 16——但当成员更多时，差别会明显。
+\end{tipbox}
+
+\begin{pitfall}[不要把结构体的内存布局当成协议]
+虽然你可以用 \code{memcpy} 把结构体直接写进文件或发到网络，但填充字节的内容是不确定的，不同编译器/平台的对齐规则也不同。跨平台传输数据时，应该逐字段序列化，而不是直接发结构体。
+\end{pitfall}
+
+\section{结构体数组}
+
+结构体数组就是“每个元素都是一个结构体”的数组：
+
+\begin{codebox}{struct-array.c —— 结构体数组}
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    char name[20];
+    double score;
+} Student;
+
+int main(void)
+{
+    Student cls[3] = {
+        {1001, "Alice", 92.5},
+        {1002, "Bob",   78.0},
+        {1003, "Carol", 85.5}
+    };
+    int i;
+    double sum = 0.0;
+
+    for (i = 0; i < 3; i++) {
+        printf("%d %-8s %.1f\n", cls[i].id, cls[i].name, cls[i].score);
+        sum = sum + cls[i].score;
+    }
+
+    printf("平均分 = %.2f\n", sum / 3.0);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+1001 Alice    92.5
+1002 Bob      78.0
+1003 Carol    85.5
+平均分 = 85.33
+\end{outbox}
+
+\begin{note}
+\texttt{\%-8s} 表示字符串左对齐、占 8 格，用来让姓名列对齐。这个格式符第 9 章会详细讲。
+\end{note}
+
+\section{结构体与函数}
+
+结构体可以像普通变量一样传给函数、从函数返回。这里先讲最基本的用法，函数的完整语法见附录~\ref{app:function}。
+
+\subsection{按值传递：函数拿到一份副本}
+
+\begin{codebox}{struct-param.c —— 结构体作为参数}
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    char name[20];
+    double score;
+} Student;
+
+void print_student(Student s)
+{
+    printf("%d %s %.1f\n", s.id, s.name, s.score);
+}
+
+int main(void)
+{
+    Student s = {1001, "Alice", 92.5};
+
+    print_student(s);       /* 传递的是一份副本 */
+    return 0;
+}
+\end{codebox}
+
+按值传递时，函数里修改 \code{s} 不会影响 \code{main} 里的原变量。这很安全，但如果结构体很大，复制会浪费时间。
+
+\subsection{按地址传递：函数可以修改原变量}
+
+如果想让函数修改原结构体，或者结构体很大想避免复制，就传地址：
+
+\begin{codebox}{struct-pointer.c —— 传地址修改结构体}
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    double score;
+} Student;
+
+void set_score(Student *p, double new_score)
+{
+    p->score = new_score;       /* 等价于 (*p).score */
+}
+
+int main(void)
+{
+    Student s = {1001, 92.5};
+
+    set_score(&s, 95.0);        /* 传地址 */
+    printf("%.1f\n", s.score);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+95.0
+\end{outbox}
+
+\code{p->score} 是“指针访问成员”的写法，等价于 \code{(*p).score}。下一章学指针时会详细解释，现在先记住这个符号。
+
+\section{综合例题}
+
+\subsection{例：学生成绩统计}
+
+\begin{example}
+有 5 个学生，每个学生有学号、姓名、成绩。输出平均分、最高分学生，以及高于平均分的人数。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{student-stats.c —— 学生成绩统计}
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    char name[20];
+    double score;
+} Student;
+
+int main(void)
+{
+    Student cls[5] = {
+        {1001, "Alice", 92.5},
+        {1002, "Bob",   78.0},
+        {1003, "Carol", 85.5},
+        {1004, "Dave",  66.0},
+        {1005, "Eve",   95.0}
+    };
+    int i;
+    double sum = 0.0;
+    double average;
+    int max_index = 0;
+    int above = 0;
+
+    for (i = 0; i < 5; i++) {
+        sum = sum + cls[i].score;
+    }
+    average = sum / 5.0;
+
+    for (i = 1; i < 5; i++) {
+        if (cls[i].score > cls[max_index].score) {
+            max_index = i;
+        }
+    }
+
+    for (i = 0; i < 5; i++) {
+        if (cls[i].score > average) {
+            above++;
+        }
+    }
+
+    printf("平均分 = %.2f\n", average);
+    printf("最高分：%s (%.1f)\n",
+           cls[max_index].name, cls[max_index].score);
+    printf("高于平均分的人数：%d\n", above);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+平均分 = 83.40
+最高分：Eve (95.0)
+高于平均分的人数：2
+\end{outbox}
+\end{solution}
+
+\subsection{例：复数运算}
+
+\begin{example}
+定义复数结构体，输入两个复数，输出它们的和与积。
+\end{example}
+\begin{solution}
+复数 $a + bi$ 与 $c + di$ 相加为 $(a+c) + (b+d)i$，相乘为 $(ac-bd) + (ad+bc)i$。
+
+\begin{codebox}{complex.c —— 复数运算}
+#include <stdio.h>
+
+typedef struct {
+    double re;      /* 实部 */
+    double im;      /* 虚部 */
+} Complex;
+
+int main(void)
+{
+    Complex x, y, sum, product;
+
+    printf("请输入第一个复数（实部 虚部）：");
+    scanf("%lf%lf", &x.re, &x.im);
+    printf("请输入第二个复数（实部 虚部）：");
+    scanf("%lf%lf", &y.re, &y.im);
+
+    sum.re = x.re + y.re;
+    sum.im = x.im + y.im;
+
+    product.re = x.re * y.re - x.im * y.im;
+    product.im = x.re * y.im + x.im * y.re;
+
+    printf("和 = %.2f + %.2fi\n", sum.re, sum.im);
+    printf("积 = %.2f + %.2fi\n", product.re, product.im);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入第一个复数（实部 虚部）：1 2
+请输入第二个复数（实部 虚部）：3 4
+和 = 4.00 + 6.00i
+积 = -5.00 + 10.00i
+\end{outbox}
+\end{solution}
+
+\subsection{例：日期与下一天}
+
+\begin{example}
+定义日期结构体，输入一个日期，输出它的下一天。要考虑闰年和月份天数。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{next-day.c —— 下一天}
+#include <stdio.h>
+
+typedef struct {
+    int year;
+    int month;
+    int day;
+} Date;
+
+int is_leap(int year)
+{
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+}
+
+int main(void)
+{
+    Date d;
+    int days[13] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    printf("请输入日期（年 月 日）：");
+    scanf("%d%d%d", &d.year, &d.month, &d.day);
+
+    if (is_leap(d.year)) {
+        days[2] = 29;
+    }
+
+    d.day++;
+    if (d.day > days[d.month]) {
+        d.day = 1;
+        d.month++;
+        if (d.month > 12) {
+            d.month = 1;
+            d.year++;
+        }
+    }
+
+    printf("下一天：%d-%02d-%02d\n", d.year, d.month, d.day);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入日期（年 月 日）：2024 2 28
+下一天：2024-02-29
+\end{outbox}
+
+这里用数组 \code{days} 存每月天数，下标 1\textasciitilde12 对应 1\textasciitilde12 月，\code{days[0]} 占位不用。
+\end{solution}
+
+\subsection{例：电机参数}
+
+\begin{example}
+定义一个电机参数结构体，包含编号、PID 三个参数和输出限幅；输入一组参数并打印。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{motor.c —— 电机参数结构体}
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    double kp;
+    double ki;
+    double kd;
+    double limit;
+} MotorParam;
+
+int main(void)
+{
+    MotorParam m;
+
+    printf("请输入电机编号与 PID 参数：");
+    scanf("%d%lf%lf%lf", &m.id, &m.kp, &m.ki, &m.kd);
+
+    printf("请输入输出限幅：");
+    scanf("%lf", &m.limit);
+
+    printf("电机 %d: kp=%.3f, ki=%.3f, kd=%.3f, limit=%.2f\n",
+           m.id, m.kp, m.ki, m.kd, m.limit);
+
+    return 0;
+}
+\end{codebox}
+
+结构体让一组相关参数“打包”在一起，后面写 PID 函数时，传一个 \code{MotorParam} 就够了，不用传五个参数。
+\end{solution}
+
+\section{常见错误}
+
+\begin{center}
+\begin{tabular}{@{}p{0.38\textwidth}p{0.52\textwidth}@{}}
+\toprule
+错误 & 问题 \\
+\midrule
+结构体定义后漏分号 & 后续代码出现莫名其妙的错误 \\
+\code{Student s;} 但没用 \code{typedef} & 应写 \code{struct Student s;} \\
+\code{s == t} & 结构体不能直接用 \code{==} 比较 \\
+\code{s.name = "Bob"} & 数组不能整体赋值，要用 \code{strcpy} \\
+\texttt{scanf("\%s", \&s.name)} & \code{s.name} 本身就是地址，不要加 \texttt{\&} \\
+忘记给数值成员加 \texttt{\&} & \code{scanf} 写不进去 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[结构体比较要逐成员]
+\code{if (s1 == s2)} 在 C 里不合法。正确做法是逐成员比较，或者用 \code{memcmp}——但 \code{memcmp} 会把填充字节也比进去，不可靠。最稳妥的是逐成员比较：
+\begin{codebox}{struct-compare.c —— 逐成员比较}
+int equal(Student a, Student b)
+{
+    return a.id == b.id &&
+           a.score == b.score;   /* 字符串比较需用 strcmp */
+}
+\end{codebox}
+\end{pitfall}
+
+\begin{pitfall}[字符串成员不能直接赋值]
+\code{s.name = "Bob";} 是错的，因为 \code{name} 是数组，数组名不能做赋值目标。正确写法是 \code{strcpy(s.name, "Bob");}，第 9 章会讲。
+\end{pitfall}
+
+\section{拔高：位域与联合体}
+
+\subsection{位域}
+
+有时结构体成员只需要几个二进制位（例如标志位），用 \code{int} 会浪费空间。C 语言提供了\textbf{位域}：
+
+\begin{codebox}{bitfield.c —— 位域}
+#include <stdio.h>
+
+struct Flags {
+    unsigned int enable : 1;    /* 占 1 位 */
+    unsigned int mode   : 2;    /* 占 2 位，取值 0-3 */
+    unsigned int speed  : 5;    /* 占 5 位，取值 0-31 */
+};
+
+int main(void)
+{
+    struct Flags f;
+
+    f.enable = 1;
+    f.mode = 3;
+    f.speed = 20;
+
+    printf("enable=%u mode=%u speed=%u\n", f.enable, f.mode, f.speed);
+    printf("sizeof(struct Flags) = %d\n", (int)sizeof(struct Flags));
+    return 0;
+}
+\end{codebox}
+
+位域在嵌入式寄存器映射中很常见，但它的具体布局（谁在高位、跨字节怎么排）由编译器决定，跨平台代码要谨慎。
+
+\subsection{联合体}
+
+\code{union} 让多个成员\textbf{共用同一块内存}，同一时刻只有一个成员有意义：
+
+\begin{codebox}{union.c —— 联合体}
+#include <stdio.h>
+
+union Data {
+    int i;
+    float f;
+    unsigned char bytes[4];
+};
+
+int main(void)
+{
+    union Data d;
+
+    d.i = 0x12345678;
+    printf("i = %x\n", d.i);
+    printf("bytes = %02x %02x %02x %02x\n",
+           d.bytes[0], d.bytes[1], d.bytes[2], d.bytes[3]);
+    printf("sizeof(union Data) = %d\n", (int)sizeof(union Data));
+
+    return 0;
+}
+\end{codebox}
+
+联合体常用于：
+\begin{itemize}
+  \item 查看一个数据的字节表示（例如上面的小端序演示）；
+  \item 节省内存：同一块空间在不同时刻存不同类型；
+  \item 协议解析：把一帧数据按不同格式解释。
+\end{itemize}
+
+\begin{note}
+上面代码里 \code{d.i = 0x12345678} 后读 \code{d.bytes}，属于“用另一个成员读取”，在 C 标准里是允许的（类型双关），但结果依赖字节序。这里只用于演示，不要依赖它做可移植代码。
+\end{note}
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.24\textwidth}p{0.66\textwidth}@{}}
+\toprule
+主题 & 要点 \\
+\midrule
+结构体 & 把不同类型的成员打包成一个整体 \\
+定义 & \texttt{struct 名字 \{ ... \};}，末尾分号不能少 \\
+访问 & 用 \code{.} 访问成员；整体赋值是逐字节复制 \\
+\code{typedef} & 给类型起别名，少写 \code{struct} \\
+嵌套 & 成员可以是另一个结构体，逐层点访问 \\
+数组 & 结构体数组适合管理一批对象 \\
+函数 & 按值传递复制一份；传地址用 \code{->} 修改原值 \\
+内存 & 成员按声明顺序排列，可能有填充字节 \\
+拔高 & 位域省空间；联合体共用内存 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[下一章预告]
+结构体让我们能“描述对象”，但还有一个问题没解决：如何让函数直接修改调用者的变量？如何让一个变量“指向”另一个变量？如何高效地传递大块数据？答案就是\textbf{指针}——C 语言最锋利、也最容易伤到自己的工具。
+\end{tipbox}
+
+\begin{problemset}
+  \item 定义一个 \code{Point} 结构体（\code{x}、\code{y}），输入两个点，输出它们的中点。
+  \item 定义一个 \code{Rect} 结构体（左上角、右下角），计算面积和周长。
+  \item 定义 \code{Student} 结构体，输入 5 个学生信息，输出平均分和最高分学生。
+  \item 用结构体数组实现：输入 5 个学生的成绩，按输入顺序输出，并统计及格人数。
+  \item 定义 \code{Date} 结构体，判断两个日期哪个更早。
+  \item 定义 \code{Complex} 结构体，实现复数的加法、减法、乘法。
+  \item 定义一个包含 \code{char}、\code{int}、\code{double} 的结构体，用 \code{sizeof} 观察它的大小，并解释为什么不是各成员大小之和。
+  \item 写一个函数，接收 \code{Student} 的地址，把成绩加 5 分（不超过 100）。
+  \item 用位域定义一个 8 位的状态字，包含 1 位使能、2 位模式、5 位速度，并打印各字段。
+  \item 思考题：为什么结构体可以整体赋值，而数组不可以？
+\end{problemset}

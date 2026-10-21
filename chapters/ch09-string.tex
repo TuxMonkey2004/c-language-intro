@@ -1,0 +1,882 @@
+\chapter{字符串}
+
+\begin{introduction}
+  \item 字符、字符数组与字符串常量
+  \item 字符串的结束标志 \texttt{\textbackslash0}
+  \item \texttt{scanf}、\texttt{fgets}、\texttt{puts} 的输入输出
+  \item \texttt{<string.h>} 常用函数：求长、复制、连接、比较、查找
+  \item 用指针和数组处理字符串
+  \item 中文字符编码与常见错误
+\end{introduction}
+
+\chaptermotto{「字符串是字符排成的队伍，\texttt{\textbackslash0} 是队伍的终点线。」}
+
+C 语言没有专门的“字符串类型”。字符串本质上是一个\textbf{以 \texttt{\textbackslash0} 结尾的字符数组}，或者一个指向这种数组的指针。理解这一点，字符串的所有“怪现象”都能解释清楚。
+
+电控程序里到处都是字符串：串口命令、日志、文件名、协议报文、调试信息。这一章会把你从“会打印 hello”带到“能自己写字符串处理函数”。
+
+\section{字符与字符串}
+
+\subsection{字符类型回顾}
+
+\code{char} 存的是一个字符的编码（ASCII 码），本质是小整数：
+
+\begin{codebox}{char-basic.c —— 字符与编码}
+#include <stdio.h>
+
+int main(void)
+{
+    char c = 'A';
+
+    printf("字符：%c\n", c);
+    printf("编码：%d\n", c);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+字符：A
+编码：65
+\end{outbox}
+
+常用字符的 ASCII 码：
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+字符 & 编码 & 字符 & 编码 \\
+\midrule
+\code{'0'} \textasciitilde \code{'9'} & 48 \textasciitilde 57 & \code{'A'} \textasciitilde \code{'Z'} & 65 \textasciitilde 90 \\
+\code{'a'} \textasciitilde \code{'z'} & 97 \textasciitilde 122 & 空格 & 32 \\
+\texttt{'\textbackslash n'} & 10 & \texttt{'\textbackslash0'} & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+记住三组关系：
+
+\begin{itemize}
+  \item 数字字符 \code{'0'} 的编码是 48，所以 \code{'7' - '0'} 等于整数 7；
+  \item 大写字母 \code{'A'} 是 65，小写字母 \code{'a'} 是 97，相差 32；
+  \item 字符 \code{'0'} 和整数 0 完全不是一回事。
+\end{itemize}
+
+\subsection{字符串就是字符数组}
+
+\begin{codebox}{string-array.c —— 字符串的内存}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[6] = "hello";
+
+    printf("%s\n", s);
+    printf("sizeof(s) = %d\n", (int)sizeof(s));
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+hello
+sizeof(s) = 6
+\end{outbox}
+
+字符串 \code{"hello"} 有 5 个字符，但数组要 6 个字节，因为最后还有一个 \textbf{\texttt{\textbackslash0}}（空字符，编码 0）作为结束标志：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \foreach \i/\c in {0/h,1/e,2/l,3/l,4/o,5/{$\backslash$0}} {
+      \node[membox,minimum width=1.3cm] (c\i) at (\i*1.5,0) {\ttfamily\c};
+      \node[font=\scriptsize,color=black!55,below=1mm of c\i] {\i};
+    }
+    \draw[decorate,decoration={brace,amplitude=4pt},structurecolor!70]
+      (-0.65,0.7) -- (7.25,0.7) node[midway,above=4pt,font=\scriptsize]{6 个字节};
+    \node[font=\small,color=ptrline,below=8mm] at (3.75,0) {\texttt{\textbackslash0} 告诉所有字符串函数：到这里为止};
+  \end{tikzpicture}
+  \caption{\texttt{char s[6] = "hello"} 的内存布局：5 个字符 + 1 个结束符}
+  \label{fig:string-memory}
+\end{figure}
+
+\begin{pitfall}[没有 \texttt{\textbackslash0} 就不是字符串]
+\begin{codebox}{no-null.c —— 缺少结束符}
+char s[5] = {'h', 'e', 'l', 'l', 'o'};   /* 没有 '\0' */
+printf("%s\n", s);                       /* 会一直往后读，直到碰巧遇到 0 */
+\end{codebox}
+打印时 \code{printf} 不知道什么时候停，会读到数组后面的内存，输出乱码甚至崩溃。\textbf{字符串必须以 \texttt{\textbackslash0} 结尾}。
+\end{pitfall}
+
+\subsection{字符串常量}
+
+双引号括起来的是字符串常量，例如 \code{"hello"}。编译器会在末尾自动加 \texttt{\textbackslash0}：
+
+\begin{codebox}{string-literal.c —— 字符串常量}
+#include <stdio.h>
+
+int main(void)
+{
+    printf("%s\n", "hello");        /* 直接使用字符串常量 */
+    printf("sizeof(\"hello\") = %d\n", (int)sizeof("hello"));
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+hello
+sizeof("hello") = 6
+\end{outbox}
+
+注意 \code{sizeof("hello")} 是 6，不是 5。
+
+\section{字符数组与字符指针}
+
+这是字符串最容易混淆的地方。两种写法看起来都能用，但含义不同：
+
+\begin{codebox}{array-vs-pointer.c —— 两种“字符串”}
+char s1[] = "hello";    /* 字符数组：在栈上复制一份，可修改 */
+char *s2 = "hello";     /* 字符指针：指向只读的字符串常量 */
+\end{codebox}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % 数组
+    \node[font=\small\bfseries] at (0,2.6) {\texttt{char s1[] = "hello"}};
+    \foreach \i/\c in {0/h,1/e,2/l,3/l,4/o,5/{$\backslash$0}} {
+      \node[membox,minimum width=1.1cm] at (\i*1.3,1.8) {\ttfamily\c};
+    }
+    \node[font=\scriptsize,color=black!55] at (2.6,0.9) {数组：6 个字节都在栈上，可以改};
+
+    % 指针
+    \node[font=\small\bfseries] at (0,0.2) {\texttt{char *s2 = "hello"}};
+    \node[ptrbox,minimum width=1.4cm] (p) at (0,-0.6) {\texttt{s2}};
+    \node[draw=black!30,fill=black!7,rounded corners=1mm,minimum width=6.5cm,minimum height=0.8cm]
+      (lit) at (5.2,-0.6) {\ttfamily h e l l o \textbackslash0};
+    \draw[ptr] (p.east) -- (lit.west);
+    \node[font=\scriptsize,color=black!55] at (4.5,-1.4) {字符串常量在只读区，不能改};
+  \end{tikzpicture}
+  \caption{字符数组会在栈上复制一份；字符指针只指向只读的字符串常量}
+  \label{fig:string-array-pointer}
+\end{figure}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+比较 & \code{char s[] = "hello";} & \code{char *p = "hello";} \\
+\midrule
+存储 & 数组，6 字节在栈上 & 指针，指向只读常量区 \\
+能否修改 & 可以 \code{s[0] = 'H';} & \textbf{不可以}，未定义行为 \\
+\code{sizeof} & 6（整个数组） & 8（指针大小，64 位） \\
+重新赋值 & 不可以 \code{s = ...} & 可以 \code{p = ...} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{codebox}{modify-string.c —— 修改字符串}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[] = "hello";
+
+    s[0] = 'H';
+    printf("%s\n", s);      /* Hello */
+
+    return 0;
+}
+\end{codebox}
+
+\begin{pitfall}[不要修改字符串常量]
+\begin{codebox}{modify-literal.c —— 错误：修改只读常量}
+char *p = "hello";
+p[0] = 'H';     /* 未定义行为，很多平台上直接崩溃 */
+\end{codebox}
+如果需要修改，用字符数组；如果只读，用 \code{const char *p = "hello";} 让编译器帮你检查。
+\end{pitfall}
+
+\section{字符串的输入与输出}
+
+\subsection{输出：\texttt{printf} 与 \texttt{puts}}
+
+\begin{codebox}{string-output.c —— 输出字符串}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[] = "hello";
+
+    printf("%s\n", s);      /* printf 输出，不自动换行 */
+    puts(s);                /* puts 输出并自动换行 */
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+hello
+hello
+\end{outbox}
+
+\subsection{输入：\texttt{scanf("\%s")} 的局限}
+
+\begin{codebox}{string-input.c —— 读入一个单词}
+#include <stdio.h>
+
+int main(void)
+{
+    char name[20];
+
+    printf("请输入姓名：");
+    scanf("%19s", name);    /* 19 是最大宽度，防止溢出 */
+
+    printf("你好，%s\n", name);
+    return 0;
+}
+\end{codebox}
+
+\texttt{scanf("\%s", name)} 会跳过前导空白，然后读到下一个空白（空格、制表符、换行）为止。所以它只能读“一个单词”，不能读带空格的句子。
+
+\begin{pitfall}[\texttt{scanf("\%s")} 的缓冲区溢出]
+\begin{codebox}{scanf-overflow.c —— 危险写法}
+char name[20];
+scanf("%s", name);      /* 如果输入超过 19 个字符，就会越界写 */
+\end{codebox}
+务必写成 \texttt{scanf("\%19s", name)}，或者改用 \code{fgets}。
+\end{pitfall}
+
+\subsection{读入一整行：\texttt{fgets}}
+
+\begin{codebox}{fgets.c —— 读入一行}
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+    char line[100];
+    int i;
+
+    printf("请输入一行文字：");
+    fgets(line, sizeof(line), stdin);
+
+    /* fgets 会把换行符也读进来，去掉它 */
+    for (i = 0; line[i] != '\0'; i++) {
+        if (line[i] == '\n') {
+            line[i] = '\0';
+            break;
+        }
+    }
+
+    printf("你输入的是：%s\n", line);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入一行文字：hello world
+你输入的是：hello world
+\end{outbox}
+
+\code{fgets} 最多读 \code{size - 1} 个字符，并自动补 \texttt{\textbackslash0}，比 \code{scanf} 安全。它的缺点是会把换行符也存进来，需要手动去掉。
+
+\begin{tipbox}[输入方式怎么选]
+\begin{itemize}
+  \item 读一个单词（无空格）：\texttt{scanf("\%19s", s)};
+  \item 读一整行：\code{fgets(s, sizeof(s), stdin)}，再去掉换行；
+  \item 读单个字符：\code{getchar()}。
+\end{itemize}
+\end{tipbox}
+
+\section{常用字符串函数}
+
+C 标准库 \file{string.h} 提供了一组字符串函数。使用前要 \code{#include <string.h>}。
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+函数 & 作用 & 注意 \\
+\midrule
+\code{strlen(s)} & 求长度（不含 \texttt{\textbackslash0}） & 返回值是 \code{size_t} \\
+\code{strcpy(dst, src)} & 复制字符串 & 目标空间必须够大 \\
+\code{strncpy(dst, src, n)} & 最多复制 n 个字符 & 可能不补 \texttt{\textbackslash0} \\
+\code{strcat(dst, src)} & 连接字符串 & 目标空间必须够大 \\
+\code{strncat(dst, src, n)} & 最多连接 n 个字符 & 会自动补 \texttt{\textbackslash0} \\
+\code{strcmp(a, b)} & 比较字符串 & 返回 0 表示相等 \\
+\code{strncmp(a, b, n)} & 比较前 n 个字符 & \\
+\code{strchr(s, c)} & 查找字符 & 返回指针或 \code{NULL} \\
+\code{strstr(s, sub)} & 查找子串 & 返回指针或 \code{NULL} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{\texttt{strlen}：求长度}
+
+\begin{codebox}{strlen.c —— strlen 与 sizeof}
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+    char s[] = "hello";
+
+    printf("strlen(s) = %d\n", (int)strlen(s));
+    printf("sizeof(s) = %d\n", (int)sizeof(s));
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+strlen(s) = 5
+sizeof(s) = 6
+\end{outbox}
+
+\code{strlen} 数到 \texttt{\textbackslash0} 为止，不包含它；\code{sizeof} 是数组占的总字节数，包含 \texttt{\textbackslash0}。
+
+\subsection{\texttt{strcpy} 与 \texttt{strcat}}
+
+\begin{codebox}{strcpy.c —— 复制与连接}
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+    char dst[50];
+
+    strcpy(dst, "hello");
+    strcat(dst, ", world");
+    printf("%s\n", dst);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+hello, world
+\end{outbox}
+
+\begin{pitfall}[\texttt{strcpy} 不检查目标空间]
+\begin{codebox}{strcpy-overflow.c —— 溢出}
+char dst[5];
+strcpy(dst, "hello world");   /* 目标只有 5 字节，严重越界 */
+\end{codebox}
+使用前必须确认 \code{dst} 足够大：至少 \code{strlen(src) + 1} 字节。
+\end{pitfall}
+
+\subsection{\texttt{strcmp}：比较字符串}
+
+\begin{codebox}{strcmp.c —— 比较字符串}
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+    char a[] = "apple";
+    char b[] = "banana";
+
+    if (strcmp(a, b) == 0) {
+        printf("相等\n");
+    } else if (strcmp(a, b) < 0) {
+        printf("a 在 b 前面\n");
+    } else {
+        printf("a 在 b 后面\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a 在 b 前面
+\end{outbox}
+
+\begin{pitfall}[字符串不能用 \texttt{==} 比较]
+\code{if (a == b)} 比较的是两个数组的地址，不是内容。比较内容必须用 \code{strcmp(a, b) == 0}。
+\end{pitfall}
+
+\subsection{查找：\texttt{strchr} 与 \texttt{strstr}}
+
+\begin{codebox}{strchr.c —— 查找字符与子串}
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+    char s[] = "hello world";
+    char *p;
+
+    p = strchr(s, 'w');
+    if (p != NULL) {
+        printf("找到 w，位置：%d\n", (int)(p - s));
+        printf("从 w 开始：%s\n", p);
+    }
+
+    p = strstr(s, "world");
+    if (p != NULL) {
+        printf("找到子串，位置：%d\n", (int)(p - s));
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+找到 w，位置：6
+从 w 开始：world
+找到子串，位置：6
+\end{outbox}
+
+\subsection{自己实现 \texttt{strlen} 和 \texttt{strcpy}}
+
+理解原理的最好方式是亲手写一遍：
+
+\begin{codebox}{my-string.c —— 自己实现字符串函数}
+#include <stdio.h>
+
+int my_strlen(const char *s)
+{
+    int len = 0;
+
+    while (s[len] != '\0') {
+        len++;
+    }
+    return len;
+}
+
+void my_strcpy(char *dst, const char *src)
+{
+    int i = 0;
+
+    while (src[i] != '\0') {
+        dst[i] = src[i];
+        i++;
+    }
+    dst[i] = '\0';      /* 别忘了结束符 */
+}
+
+int main(void)
+{
+    char buf[20];
+
+    my_strcpy(buf, "hello");
+    printf("%s, len = %d\n", buf, my_strlen(buf));
+    return 0;
+}
+\end{codebox}
+
+用指针写会更简洁：
+
+\begin{codebox}{my-string-pointer.c —— 指针版}
+int my_strlen(const char *s)
+{
+    const char *p = s;
+
+    while (*p != '\0') {
+        p++;
+    }
+    return (int)(p - s);
+}
+
+void my_strcpy(char *dst, const char *src)
+{
+    while ((*dst = *src) != '\0') {
+        dst++;
+        src++;
+    }
+}
+\end{codebox}
+
+\section{字符串的处理}
+
+\subsection{统计字符}
+
+\begin{codebox}{count-chars.c —— 统计字母、数字、其他字符}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[100];
+    int i;
+    int letters = 0;
+    int digits = 0;
+    int others = 0;
+
+    printf("请输入一行文字：");
+    fgets(s, sizeof(s), stdin);
+
+    for (i = 0; s[i] != '\0'; i++) {
+        if ((s[i] >= 'a' && s[i] <= 'z') || (s[i] >= 'A' && s[i] <= 'Z')) {
+            letters++;
+        } else if (s[i] >= '0' && s[i] <= '9') {
+            digits++;
+        } else if (s[i] != '\n') {
+            others++;
+        }
+    }
+
+    printf("字母 %d 个，数字 %d 个，其他 %d 个\n",
+           letters, digits, others);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入一行文字：abc123 !!
+字母 3 个，数字 3 个，其他 3 个
+\end{outbox}
+
+\subsection{大小写转换}
+
+\begin{codebox}{case-convert.c —— 大小写转换}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[100];
+    int i;
+
+    printf("请输入一行文字：");
+    fgets(s, sizeof(s), stdin);
+
+    for (i = 0; s[i] != '\0'; i++) {
+        if (s[i] >= 'a' && s[i] <= 'z') {
+            s[i] = s[i] - 32;       /* 小写转大写 */
+        } else if (s[i] >= 'A' && s[i] <= 'Z') {
+            s[i] = s[i] + 32;       /* 大写转小写 */
+        }
+    }
+
+    printf("转换后：%s\n", s);
+    return 0;
+}
+\end{codebox}
+
+也可以用 \file{ctype.h} 里的 \code{toupper}、\code{tolower}、\code{isdigit}、\code{isalpha}，它们更可移植。
+
+\subsection{判断回文}
+
+\begin{codebox}{palindrome.c —— 判断回文}
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+    char s[100];
+    int i;
+    int j;
+    int is_pal = 1;
+
+    printf("请输入一个字符串：");
+    scanf("%99s", s);
+
+    i = 0;
+    j = (int)strlen(s) - 1;
+
+    while (i < j) {
+        if (s[i] != s[j]) {
+            is_pal = 0;
+            break;
+        }
+        i++;
+        j--;
+    }
+
+    if (is_pal) {
+        printf("是回文\n");
+    } else {
+        printf("不是回文\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入一个字符串：level
+是回文
+\end{outbox}
+
+\subsection{统计单词个数}
+
+\begin{codebox}{word-count.c —— 统计单词个数}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[200];
+    int i;
+    int count = 0;
+    int in_word = 0;
+
+    printf("请输入一行文字：");
+    fgets(s, sizeof(s), stdin);
+
+    for (i = 0; s[i] != '\0'; i++) {
+        if (s[i] == ' ' || s[i] == '\n' || s[i] == '\t') {
+            in_word = 0;
+        } else {
+            if (!in_word) {
+                count++;
+                in_word = 1;
+            }
+        }
+    }
+
+    printf("单词个数：%d\n", count);
+    return 0;
+}
+\end{codebox}
+
+思路：用一个标志 \code{in_word} 记录“当前是否在单词里”。从空白进入非空白时，单词数加 1。
+
+\section{字符串与指针}
+
+\subsection{用指针遍历字符串}
+
+\begin{codebox}{string-pointer.c —— 指针遍历}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[] = "hello";
+    char *p;
+
+    for (p = s; *p != '\0'; p++) {
+        printf("%c ", *p);
+    }
+    printf("\n");
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+h e l l o
+\end{outbox}
+
+\code{p++} 每次指向下一个字符，\texttt{*p != '\textbackslash0'} 作为结束条件。
+
+\subsection{字符串数组}
+
+如果要存多个字符串，有两种常见方式：
+
+\begin{codebox}{string-list.c —— 多个字符串}
+/* 方式一：二维字符数组，每行一个字符串，可修改 */
+char names[3][20] = {"Alice", "Bob", "Carol"};
+
+/* 方式二：字符指针数组，每个指针指向一个字符串常量，只读 */
+char *colors[3] = {"red", "green", "blue"};
+\end{codebox}
+
+方式一每个字符串固定占 20 字节，浪费空间但可修改；方式二只占指针和常量本身，但不能修改内容。根据需求选择。
+
+\section{中文与字符编码}
+
+一个英文字符在 ASCII 里占 1 字节，但中文不是。以 UTF-8 为例，一个汉字通常占 3 字节：
+
+\begin{codebox}{utf8.c —— 中文的长度}
+#include <stdio.h>
+#include <string.h>
+
+int main(void)
+{
+    char s[] = "你好";
+
+    printf("strlen(s) = %d\n", (int)strlen(s));
+    printf("sizeof(s) = %d\n", (int)sizeof(s));
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（UTF-8 环境）}
+strlen(s) = 6
+sizeof(s) = 7
+\end{outbox}
+
+“你好”只有 2 个汉字，\code{strlen} 却是 6——因为 UTF-8 下每个汉字占 3 字节。\code{strlen} 数的是\textbf{字节数}，不是字符数。
+
+\begin{itemize}
+  \item \textbf{GBK}：一个汉字通常 2 字节；
+  \item \textbf{UTF-8}：一个汉字通常 3 字节；
+  \item 文件编码、终端编码、程序里的编码不一致，就会出现乱码。
+\end{itemize}
+
+\begin{tipbox}[处理中文的原则]
+\begin{itemize}
+  \item 输入输出用 \code{char} 数组存 UTF-8 字节，一般能原样显示；
+  \item 不要用 \code{strlen} 判断“几个汉字”；
+  \item 截断字符串时不能从中间截断一个 UTF-8 字符，否则会乱码；
+  \item 真正需要按“字符”处理时，用宽字符 \code{wchar_t}（平台相关，初学了解即可）。
+\end{itemize}
+\end{tipbox}
+
+\section{常见错误}
+
+\begin{center}
+\begin{tabular}{@{}p{0.38\textwidth}p{0.52\textwidth}@{}}
+\toprule
+错误 & 后果 \\
+\midrule
+字符数组没有 \texttt{\textbackslash0} & 打印越界、乱码 \\
+\code{char *p = "abc"; p[0] = 'A';} & 修改只读常量，崩溃 \\
+\code{if (s1 == s2)} & 比较地址，不是内容 \\
+\code{s = "abc";}（数组） & 数组不能整体赋值，用 \code{strcpy} \\
+\texttt{scanf("\%s", s)} 不限宽 & 缓冲区溢出 \\
+\code{strcpy} 目标太小 & 溢出 \\
+\code{strncpy} 后忘记补 \texttt{\textbackslash0} & 字符串没有结束符 \\
+把 \code{strlen} 当字符数（中文） & 结果比预期大 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[\texttt{strncpy} 不保证补零]
+\begin{codebox}{strncpy.c —— strncpy 的坑}
+char dst[5];
+strncpy(dst, "hello", 5);   /* dst 里没有 '\0'！ */
+dst[4] = '\0';              /* 需要手动补 */
+\end{codebox}
+\code{strncpy} 只在源字符串长度小于 \code{n} 时补 \texttt{\textbackslash0}；如果源字符串更长，它不会补。
+\end{pitfall}
+
+\section{综合例题}
+
+\begin{example}
+输入一个字符串，删除其中所有的空格，输出结果。
+\end{example}
+\begin{solution}
+用两个下标：\code{i} 读，\code{j} 写。遇到空格就跳过，否则写到 \code{j} 位置。
+
+\begin{codebox}{remove-space.c —— 删除空格}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[200];
+    int i;
+    int j = 0;
+
+    printf("请输入一行文字：");
+    fgets(s, sizeof(s), stdin);
+
+    for (i = 0; s[i] != '\0'; i++) {
+        if (s[i] != ' ') {
+            s[j] = s[i];
+            j++;
+        }
+    }
+    s[j] = '\0';
+
+    printf("删除空格后：%s\n", s);
+    return 0;
+}
+\end{codebox}
+\end{solution}
+
+\begin{example}
+输入一个字符串，统计每个字母出现的次数（只统计小写字母）。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{letter-count.c —— 字母频次}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[200];
+    int count[26] = {0};
+    int i;
+
+    printf("请输入一行文字：");
+    fgets(s, sizeof(s), stdin);
+
+    for (i = 0; s[i] != '\0'; i++) {
+        if (s[i] >= 'a' && s[i] <= 'z') {
+            count[s[i] - 'a']++;
+        }
+    }
+
+    for (i = 0; i < 26; i++) {
+        if (count[i] > 0) {
+            printf("%c: %d\n", 'a' + i, count[i]);
+        }
+    }
+
+    return 0;
+}
+\end{codebox}
+\end{solution}
+
+\begin{example}
+输入两个字符串，判断第二个是不是第一个的子串（不用 \texttt{strstr}）。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{substring.c —— 判断子串}
+#include <stdio.h>
+
+int main(void)
+{
+    char s[200];
+    char sub[100];
+    int i, j, k;
+
+    printf("请输入主串：");
+    scanf("%199s", s);
+    printf("请输入子串：");
+    scanf("%99s", sub);
+
+    for (i = 0; s[i] != '\0'; i++) {
+        j = 0;
+        k = i;
+        while (sub[j] != '\0' && s[k] == sub[j]) {
+            j++;
+            k++;
+        }
+        if (sub[j] == '\0') {
+            printf("是子串，起始位置 %d\n", i);
+            return 0;
+        }
+    }
+
+    printf("不是子串\n");
+    return 0;
+}
+\end{codebox}
+\end{solution}
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.24\textwidth}p{0.66\textwidth}@{}}
+\toprule
+主题 & 要点 \\
+\midrule
+字符串 & 以 \texttt{\textbackslash0} 结尾的字符数组 \\
+字符数组 & 可修改；\code{sizeof} 是数组总大小 \\
+字符指针 & 指向字符串常量；不能修改内容 \\
+输入 & \texttt{scanf("\%19s")} 防溢出；\code{fgets} 读整行 \\
+输出 & \texttt{printf("\%s")} 不换行；\code{puts} 自动换行 \\
+常用函数 & \code{strlen}、\code{strcpy}、\code{strcat}、\code{strcmp}、\code{strchr}、\code{strstr} \\
+比较 & 用 \code{strcmp}，不能用 \code{==} \\
+中文 & \code{strlen} 数字节，不数字符 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[下一章预告]
+有了数组和字符串，我们就可以处理一批数据了。但数据往往是乱序的，查找、统计、输出都需要先排序。下一章学习几种经典排序算法，并比较它们的效率。
+\end{tipbox}
+
+\begin{problemset}
+  \item 输入一个字符串，输出它的长度（分别用 \code{strlen} 和自己写的函数）。
+  \item 输入两个字符串，把第二个连接到第一个后面（用 \code{strcat} 和自己写的函数）。
+  \item 输入两个字符串，比较它们的大小（用 \code{strcmp}）。
+  \item 输入一个字符串，统计其中字母、数字、空格和其他字符的个数。
+  \item 输入一个字符串，把所有小写字母转成大写。
+  \item 判断一个字符串是否为回文。
+  \item 输入一行文字，统计单词个数。
+  \item 输入一个字符串，删除所有空格。
+  \item 输入一个字符串，输出其中每个字母出现的次数。
+  \item 思考题：为什么 \code{char s[] = "hello";} 可以修改，而 \code{char *p = "hello";} 不能修改？它们的内存分别在哪里？
+\end{problemset}

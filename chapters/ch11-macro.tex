@@ -1,0 +1,485 @@
+\chapter{宏定义}
+
+\begin{introduction}
+  \item 预处理器在编译之前做了什么
+  \item 对象式宏与函数式宏
+  \item 括号、副作用与 \texttt{do-while(0)}
+  \item \texttt{\#} 与 \texttt{\#\#}：字符串化与连接
+  \item 条件编译与头文件保护
+  \item 预定义宏、调试宏与常见陷阱
+\end{introduction}
+
+\chaptermotto{「宏是编译之前的文本替换：威力很大，也很容易伤到自己。」}
+
+宏定义（macro）由\textbf{预处理器}处理，发生在真正的编译之前。它本质上就是“文本替换”：你写一个名字，预处理器把它替换成一段文本。
+
+宏可以用来定义常量、写“函数式”代码、做条件编译、开关调试信息。它没有类型检查，也不遵守作用域规则，所以用得好是利器，用不好就是灾难。这一章会把宏的能力和边界都讲清楚。
+
+\section{预处理器}
+
+\subsection{编译之前的步骤}
+
+第 1 章讲过，C 程序从源码到可执行文件要经过预处理、编译、汇编、链接。预处理器负责处理所有以 \code{#} 开头的行：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,node distance=8mm]
+    \node[process] (src) {源文件\\\texttt{main.c}};
+    \node[process,right=of src] (pp) {预处理器};
+    \node[process,right=of pp] (cc) {编译器};
+    \node[process,right=of cc] (obj) {目标文件};
+    \draw[flow] (src) -- (pp);
+    \draw[flow] (pp) -- node[lbl,above]{\texttt{main.i}} (cc);
+    \draw[flow] (cc) -- (obj);
+    \node[font=\scriptsize,color=black!55,below=4mm of pp] {展开 \texttt{\#include}、\texttt{\#define}、条件编译};
+  \end{tikzpicture}
+  \caption{预处理器在编译之前工作，只做文本层面的处理}
+  \label{fig:preprocess}
+\end{figure}
+
+预处理器的输出仍然是 C 代码，只是所有宏都被替换了、头文件被展开了、条件编译的分支被裁剪了。
+
+\subsection{预处理指令}
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+指令 & 作用 \\
+\midrule
+\texttt{\#include} & 包含头文件 \\
+\texttt{\#define} & 定义宏 \\
+\texttt{\#undef} & 取消宏定义 \\
+\texttt{\#if} / \texttt{\#ifdef} / \texttt{\#ifndef} & 条件编译 \\
+\texttt{\#else} / \texttt{\#elif} / \texttt{\#endif} & 条件编译分支 \\
+\texttt{\#error} & 产生编译错误 \\
+\texttt{\#pragma} & 编译器相关指令 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{对象式宏}
+
+\subsection{定义常量}
+
+\begin{codebox}{define-const.c —— 定义常量}
+#include <stdio.h>
+
+#define PI 3.1415926
+#define MAX_SIZE 100
+#define VERSION "1.0"
+
+int main(void)
+{
+    printf("PI = %f\n", PI);
+    printf("MAX_SIZE = %d\n", MAX_SIZE);
+    printf("VERSION = %s\n", VERSION);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+PI = 3.141593
+MAX_SIZE = 100
+VERSION = 1.0
+\end{outbox}
+
+预处理器会把代码里所有的 \code{PI} 替换成 \code{3.1415926}，就像你在编辑器里用了“全部替换”。
+
+\begin{pitfall}[宏定义不要加分号]
+\begin{codebox}{define-semicolon.c —— 错误：多了分号}
+#define MAX_SIZE 100;      /* 错误 */
+int a[MAX_SIZE];            /* 展开成 int a[100;]; */
+\end{codebox}
+宏不是语句，末尾不加分号。否则替换后会多出一个分号，引发莫名其妙的错误。
+\end{pitfall}
+
+\subsection{宏与常量的区别}
+
+\begin{codebox}{macro-vs-const.c —— 宏、const、enum}
+#define MAX 100                 /* 宏：无类型，预处理替换 */
+const int max_value = 100;      /* const 变量：有类型，编译器检查 */
+enum { MAX_ENUM = 100 };        /* 枚举常量：有类型，可作数组长度 */
+\end{codebox}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+方式 & 优点 & 缺点 \\
+\midrule
+\texttt{\#define} & 无类型限制、可用于预处理条件 & 无类型检查、难调试、可能重复求值 \\
+\code{const} & 有类型、可调试 & C89 中不能作数组长度 \\
+\code{enum} & 有类型、可作数组长度 & 只能是整数 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[常量怎么选]
+整数常量优先用 \code{enum} 或 \code{const}；只在需要预处理条件（\texttt{\#if}）或跨平台配置时用 \texttt{\#define}。
+\end{tipbox}
+
+\section{函数式宏}
+
+\subsection{基本写法}
+
+\begin{codebox}{square-macro.c —— 函数式宏}
+#include <stdio.h>
+
+#define SQUARE(x) ((x) * (x))
+
+int main(void)
+{
+    int a = 5;
+
+    printf("%d\n", SQUARE(a));
+    printf("%d\n", SQUARE(a + 1));
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+25
+36
+\end{outbox}
+
+\code{SQUARE(a + 1)} 展开成 \code{((a + 1) * (a + 1))}，结果是 36。
+
+\subsection{括号！括号！括号！}
+
+\begin{codebox}{macro-paren.c —— 不加括号的灾难}
+#define SQUARE_BAD(x) x * x
+#define SQUARE_GOOD(x) ((x) * (x))
+
+SQUARE_BAD(2 + 3)    /* 展开成 2 + 3 * 2 + 3 = 11，而不是 25 */
+SQUARE_GOOD(2 + 3)   /* 展开成 ((2 + 3) * (2 + 3)) = 25 */
+\end{codebox}
+
+\begin{pitfall}[宏的参数和整体都要加括号]
+\begin{codebox}{macro-paren2.c —— 另一个经典错误}
+#define DOUBLE(x) (x) + (x)
+int y = DOUBLE(3) * 2;   /* 展开成 (3) + (3) * 2 = 9，而不是 12 */
+\end{codebox}
+正确写法：\texttt{\#define DOUBLE(x) ((x) + (x))}。记住：\textbf{每个参数加括号，整个表达式再加一层括号}。
+\end{pitfall}
+
+\subsection{副作用：参数被求值多次}
+
+\begin{codebox}{macro-side-effect.c —— 宏的副作用}
+#define SQUARE(x) ((x) * (x))
+
+int i = 5;
+int y = SQUARE(i++);    /* 展开成 ((i++) * (i++))，i 被加了两次 */
+\end{codebox}
+
+这属于未定义行为：\code{i} 在同一个表达式中被修改了两次。宏的参数不是“传值”，而是\textbf{文本替换}，所以会重复求值。
+
+\begin{pitfall}[带副作用的参数不要传给宏]
+\code{i++}、\code{func()}、\code{*p++} 这类表达式传给函数式宏时，可能被求值多次。要么先用临时变量接住，要么改用函数。
+\end{pitfall}
+
+\subsection{用 \texttt{do-while(0)} 包装多语句宏}
+
+\begin{codebox}{do-while-macro.c —— 多语句宏}
+#define SWAP(a, b) do { \
+    int temp = (a);     \
+    (a) = (b);          \
+    (b) = temp;         \
+} while (0)
+\end{codebox}
+
+为什么要包成 \texttt{do \{ ... \} while (0)}？因为这样宏展开后仍然是一条语句，可以安全地放在 \code{if-else} 里：
+
+\begin{codebox}{swap-macro-use.c —— 使用多语句宏}
+if (x > y)
+    SWAP(x, y);
+else
+    printf("不用交换\n");
+\end{codebox}
+
+如果直接写成 \texttt{\{ ... \}}，展开后 \code{if} 和 \code{else} 的配对就会出问题。
+
+\subsection{常用的函数式宏}
+
+\begin{codebox}{common-macros.c —— 常见宏}
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define ABS(x)    ((x) < 0 ? -(x) : (x))
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+\end{codebox}
+
+\code{ARRAY_SIZE} 只能用于真正的数组，不能用于指针参数。
+
+\section{\texttt{\#} 与 \texttt{\#\#}}
+
+\subsection{字符串化 \texttt{\#}}
+
+在宏参数前加 \texttt{\#}，会把参数变成字符串：
+
+\begin{codebox}{stringize.c —— 字符串化}
+#include <stdio.h>
+
+#define STR(x) #x
+
+int main(void)
+{
+    printf("%s\n", STR(hello));
+    printf("%s\n", STR(1 + 2));
+    printf("%s\n", STR(MAX_SIZE));
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+hello
+1 + 2
+MAX_SIZE
+\end{outbox}
+
+注意：\code{STR(MAX_SIZE)} 得到的是字符串 \code{"MAX_SIZE"}，不会先把宏展开。要展开后再字符串化，需要两层宏（进阶技巧）。
+
+\subsection{连接 \texttt{\#\#}}
+
+\texttt{\#\#} 把两个记号拼成一个：
+
+\begin{codebox}{token-paste.c —— 记号连接}
+#include <stdio.h>
+
+#define MAKE_VAR(n) var_##n
+
+int main(void)
+{
+    int MAKE_VAR(1) = 10;       /* 展开成 int var_1 = 10; */
+    int MAKE_VAR(2) = 20;
+
+    printf("%d %d\n", var_1, var_2);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+10 20
+\end{outbox}
+
+\texttt{\#\#} 常用于自动生成变量名、函数名，或者 X-Macro 技巧。
+
+\section{条件编译}
+
+\subsection{\texttt{\#ifdef} / \texttt{\#ifndef}}
+
+\begin{codebox}{ifdef.c —— 条件编译}
+#include <stdio.h>
+
+#define DEBUG 1
+
+int main(void)
+{
+#ifdef DEBUG
+    printf("调试模式：程序开始运行\n");
+#endif
+
+    printf("程序主体\n");
+
+    return 0;
+}
+\end{codebox}
+
+常见用途：
+
+\begin{itemize}
+  \item 用 \code{DEBUG} 宏控制调试输出；
+  \item 用 \texttt{\#ifdef \_WIN32} 区分 Windows 和 Linux；
+  \item 用 \texttt{\#ifndef} 做头文件保护。
+\end{itemize}
+
+\subsection{头文件保护}
+
+头文件可能被多次包含，导致重复定义。标准做法是用条件编译保护：
+
+\begin{codebox}{student.h —— 头文件保护}
+#ifndef STUDENT_H
+#define STUDENT_H
+
+struct Student {
+    int id;
+    char name[20];
+    double score;
+};
+
+#endif
+\end{codebox}
+
+第一次包含时，\code{STUDENT_H} 未定义，进入内容并定义它；第二次包含时，\code{STUDENT_H} 已定义，直接跳过。
+
+\begin{tipbox}[头文件保护的名字]
+宏名通常用文件名大写 + 下划线，例如 \code{STUDENT_H}、\code{MOTOR_CTRL_H}。确保唯一，避免冲突。
+\end{tipbox}
+
+\subsection{\texttt{\#if} 与 \texttt{defined}}
+
+\begin{codebox}{if-defined.c —— 更灵活的判断}
+#if defined(DEBUG) && DEBUG > 0
+    printf("调试输出\n");
+#endif
+
+#if VERSION >= 2
+    printf("新版本\n");
+#else
+    printf("旧版本\n");
+#endif
+\end{codebox}
+
+\texttt{\#if} 后面必须是一个整数常量表达式，不能使用变量。
+
+\section{预定义宏}
+
+预处理器还提供了一些预定义宏，调试时很有用：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+宏 & 含义 \\
+\midrule
+\code{__FILE__} & 当前源文件名（字符串） \\
+\code{__LINE__} & 当前行号（整数） \\
+\code{__DATE__} & 编译日期（字符串） \\
+\code{__TIME__} & 编译时间（字符串） \\
+\code{__STDC__} & 是否遵循标准 C \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{codebox}{predefined.c —— 预定义宏}
+#include <stdio.h>
+
+int main(void)
+{
+    printf("文件：%s\n", __FILE__);
+    printf("行号：%d\n", __LINE__);
+    printf("编译日期：%s\n", __DATE__);
+    printf("编译时间：%s\n", __TIME__);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（示例）}
+文件：predefined.c
+行号：7
+编译日期：Oct 21 2026
+编译时间：13:30:00
+\end{outbox}
+
+\section{调试宏}
+
+把 \code{__FILE__}、\code{__LINE__} 和 \texttt{\#\#} 结合起来，可以做一个简单的调试输出宏：
+
+\begin{codebox}{debug-macro.c —— 调试宏}
+#include <stdio.h>
+
+#ifdef DEBUG
+#define DBG_PRINT(fmt, ...) \
+    printf("[%s:%d] " fmt "\n", __FILE__, __LINE__, __VA_ARGS__)
+#else
+#define DBG_PRINT(fmt, ...) ((void)0)
+#endif
+\end{codebox}
+
+\begin{note}
+上面用了 \code{...} 和 \code{__VA_ARGS__}，这是 C99 的可变参数宏，C89 编译器不一定支持。C89 下可以用固定参数或直接写 \code{printf}。本书正文代码不使用可变参数宏，这里只作了解。
+\end{note}
+
+C89 下更简单的做法：
+
+\begin{codebox}{debug-c89.c —— C89 调试宏}
+#define DBG(msg) printf("[%s:%d] %s\n", __FILE__, __LINE__, msg)
+\end{codebox}
+
+\section{宏的常见陷阱}
+
+\begin{center}
+\begin{tabular}{@{}p{0.38\textwidth}p{0.52\textwidth}@{}}
+\toprule
+错误 & 后果 \\
+\midrule
+\texttt{\#define MAX 100;} & 多出分号 \\
+\texttt{\#define SQUARE(x) x*x} & 优先级错误 \\
+参数有副作用 & 被求值多次 \\
+宏名与变量名冲突 & 意外替换 \\
+宏里写注释 & 注释可能影响替换 \\
+宏没有类型检查 & 错误类型也能通过编译 \\
+递归宏 & 展开不终止或行为异常 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[宏名不要用短小的常见词]
+\texttt{\#define max 100} 会把代码里所有叫 \code{max} 的变量、函数都替换掉。宏名用大写，且尽量具体，例如 \code{MAX_BUFFER_SIZE}。
+\end{pitfall}
+
+\section{拔高：X-Macro 与代码生成}
+
+有时候需要“一份数据，多处使用”。例如定义一组错误码，既要枚举值，又要转成字符串。X-Macro 可以做到：
+
+\begin{codebox}{x-macro.c —— X-Macro 示意}
+#define ERROR_LIST \
+    X(OK, 0)       \
+    X(TIMEOUT, 1)  \
+    X(OVERFLOW, 2)
+
+#define X(name, code) ERR_##name = code,
+enum ErrorCode {
+    ERROR_LIST
+};
+#undef X
+
+#define X(name, code) case ERR_##name: return #name;
+const char *error_name(int code)
+{
+    switch (code) {
+        ERROR_LIST
+    }
+    return "UNKNOWN";
+}
+#undef X
+\end{codebox}
+
+这种写法在大型工程中用于生成“枚举 + 字符串 + 查表”等重复代码。初学阶段知道有这种技巧即可。
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.24\textwidth}p{0.66\textwidth}@{}}
+\toprule
+主题 & 要点 \\
+\midrule
+预处理 & 编译前的文本替换 \\
+对象式宏 & 定义常量；不加分号；无类型检查 \\
+函数式宏 & 参数整体加括号；注意副作用 \\
+多语句宏 & 用 \texttt{do \{ ... \} while (0)} 包装 \\
+\texttt{\#} / \texttt{\#\#} & 字符串化 / 记号连接 \\
+条件编译 & \texttt{\#ifdef}、\texttt{\#ifndef}、\texttt{\#if} \\
+头文件保护 & \texttt{\#ifndef} + \texttt{\#define} + \texttt{\#endif} \\
+预定义宏 & \code{__FILE__}、\code{__LINE__} 等 \\
+原则 & 能不用宏就不用；用就大写、加括号、写清楚 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[写在最后]
+到这里，本书的正文就结束了。你从“计算机怎么存数据”出发，走过了顺序、分支、循环、数组、结构体、指针、字符串、排序和宏。接下来最重要的不是继续学新语法，而是\textbf{写代码}：找一些小项目（计算器、学生管理、串口协议解析、简单 PID），把学过的知识串起来。遇到问题回来看对应章节，进步会很快。
+\end{tipbox}
+
+\begin{problemset}
+  \item 用宏定义 \code{PI}、\code{E} 和 \code{GOLDEN}，输出它们的值。
+  \item 写一个 \code{SQUARE} 宏，并测试 \code{SQUARE(2+3)}。
+  \item 写一个 \code{MAX3(a,b,c)} 宏，求三个数的最大值。
+  \item 写一个 \code{SWAP} 多语句宏，用 \code{do-while(0)} 包装。
+  \item 用 \texttt{\#} 写一个 \code{PRINT_VAR(x)} 宏，输出变量名和值。
+  \item 用 \texttt{\#\#} 生成 \code{var_1}、\code{var_2} 两个变量。
+  \item 用条件编译实现：定义 \code{DEBUG} 时输出调试信息，否则不输出。
+  \item 写一个头文件保护，防止重复包含。
+  \item 解释 \texttt{\#define SQUARE(x) x*x} 的问题，并改正。
+  \item 思考题：为什么宏参数 \code{i++} 会导致问题？应该怎么避免？
+\end{problemset}

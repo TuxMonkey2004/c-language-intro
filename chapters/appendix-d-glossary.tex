@@ -1,0 +1,84 @@
+\chapter{术语中英对照}
+\label{app:glossary}
+
+本附录按中文拼音/英文顺序整理书中出现的常用术语，方便查英文资料。
+
+\begin{longtable}{@{}p{0.18\textwidth}p{0.24\textwidth}p{0.48\textwidth}@{}}
+\toprule
+中文 & English & 说明 \\
+\midrule
+\endfirsthead
+\toprule
+中文 & English & 说明 \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+地址 & address & 内存单元的编号，指针里存的就是地址 \\
+实参 & argument & 调用函数时实际传入的值 \\
+数组 & array & 一段连续存放的同类型元素 \\
+ASCII 码 & ASCII & 常用字符的 7 位编码标准 \\
+赋值 & assignment & 把右边的值写进左边的变量 \\
+二进制 & binary & 以 0 和 1 表示数字 \\
+位 & bit & 最小的二进制单位，取值 0/1 \\
+字节 & byte & 8 位，内存编址的基本单位 \\
+缓冲区 & buffer & 临时存放输入输出数据的区域 \\
+调用 & call & 执行一个函数 \\
+强制类型转换 & cast & 显式地把一种类型转成另一种 \\
+字符 & char & 单个字符，本质是小整数 \\
+编译器 & compiler & 把 C 代码翻译成机器指令的程序 \\
+常量 & constant & 程序运行中不改变的值 \\
+CPU & central processing unit & 中央处理器 \\
+悬空指针 & dangling pointer & 指向已释放内存的指针 \\
+调试 & debug & 定位和修复程序错误的过程 \\
+声明 & declaration & 告诉编译器“有这么个名字和类型” \\
+定义 & definition & 为变量/函数分配存储或给出实现 \\
+解引用 & dereference & 通过指针访问它指向的数据，用 \code{*} \\
+双精度 & double & 双精度浮点数，通常 8 字节 \\
+转义字符 & escape sequence & 反斜杠加字符表示特殊字符，如 \texttt{\textbackslash n} \\
+表达式 & expression & 由变量、常量、运算符组成、有值的式子 \\
+文件 & file & 存储在磁盘上的数据集合 \\
+浮点数 & floating point & 带小数点的数，按 IEEE 754 存储 \\
+函数 & function & 完成特定任务的一段代码 \\
+全局变量 & global variable & 定义在所有函数外的变量 \\
+堆 & heap & 动态分配的内存区域，用 \code{malloc}/\code{free} 管理 \\
+十六进制 & hexadecimal & 以 16 为基数，前缀 \code{0x} \\
+标识符 & identifier & 变量、函数、类型等的名字 \\
+初始化 & initialization & 定义变量时给初值 \\
+整数 & integer & 没有小数部分的数 \\
+关键字 & keyword & C 语言保留的特殊单词 \\
+库 & library & 预先写好的函数集合 \\
+链接器 & linker & 把目标文件和库组合成可执行文件 \\
+局部变量 & local variable & 定义在函数或块内的变量 \\
+循环 & loop & 重复执行一段代码 \\
+宏 & macro & 预处理阶段的文本替换 \\
+内存泄漏 & memory leak & 申请的内存没有释放 \\
+空指针 & null pointer & 值为 \code{NULL} 的指针 \\
+操作数 & operand & 参与运算的数据 \\
+运算符 & operator & 表示运算的符号 \\
+溢出 & overflow & 数值超出类型能表示的范围 \\
+形参 & parameter & 函数定义中声明的参数 \\
+指针 & pointer & 存放地址的变量 \\
+预处理器 & preprocessor & 编译前处理 \texttt{\#} 指令的程序 \\
+函数原型 & prototype & 函数的声明，说明返回值和参数类型 \\
+递归 & recursion & 函数调用自身 \\
+返回值 & return value & 函数执行后返回给调用者的值 \\
+作用域 & scope & 名字有效的范围 \\
+段错误 & segmentation fault & 访问非法内存导致的崩溃 \\
+栈 & stack & 存放局部变量和函数调用信息的区域 \\
+语句 & statement & 程序执行的基本单位，以分号结尾 \\
+字符串 & string & 以 \texttt{\textbackslash0} 结尾的字符数组 \\
+字符串常量 & string literal & 双引号括起来的字符序列 \\
+结构体 & struct & 把不同类型成员组合成的类型 \\
+语法 & syntax & 语言的书写规则 \\
+补码 & two's complement & 现代计算机表示有符号整数的编码 \\
+未定义行为 & undefined behavior & 标准没有规定结果的行为，必须避免 \\
+联合体 & union & 多个成员共用同一块内存的类型 \\
+变量 & variable & 有名字、类型、地址的存储空间 \\
+\code{void} & void & 表示“无类型/无返回值” \\
+野指针 & wild pointer & 未初始化或指向无效地址的指针 \\
+\end{longtable}
+
+\begin{tipbox}[查英文资料的技巧]
+遇到不认识的术语，先在本表查中文，再用英文关键词搜索，能找到更准确的结果。例如搜 \code{dangling pointer} 比搜“悬空指针”得到的资料多得多。
+\end{tipbox}

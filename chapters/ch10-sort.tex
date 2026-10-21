@@ -1,0 +1,723 @@
+\chapter{排序算法}
+
+\begin{introduction}
+  \item 排序是什么：把数据按某种顺序排好
+  \item 冒泡、选择、插入三种基础排序
+  \item 希尔、归并、快速三种进阶排序
+  \item 时间复杂度、稳定性与适用场景
+  \item 结构体数组排序与标准库 \texttt{qsort}
+  \item 排序后的二分查找
+\end{introduction}
+
+\chaptermotto{「排序是把混乱变成秩序的最基本手段。」}
+
+前面几章我们学了数组、结构体、指针和字符串。现在要把它们用起来，解决一个非常经典的问题：\textbf{排序}。
+
+排序不仅是算法课的必修内容，也是工程中的高频操作：成绩排名、传感器数据取中位数、任务按优先级调度、字符串按字典序输出，都离不开排序。这一章会从最直观的冒泡排序讲起，逐步过渡到归并和快速排序，并比较它们的效率。
+
+\section{排序的基本概念}
+
+\subsection{什么是排序}
+
+给定一组数据，排序就是按照某个规则重新排列，使它们满足\textbf{有序}关系。例如把 \texttt{\{5, 2, 9, 1, 7\}} 升序排列为 \texttt{\{1, 2, 5, 7, 9\}}。
+
+排序的依据叫\textbf{关键字}（key）。对整数来说关键字就是数值本身；对学生来说，可以按学号、按成绩、按姓名排序。
+
+\subsection{两个重要指标}
+
+\begin{itemize}
+  \item \textbf{时间复杂度}：数据量 $n$ 增大时，比较和移动次数如何增长；
+  \item \textbf{稳定性}：关键字相同的元素，排序后相对顺序是否保持不变。
+\end{itemize}
+
+例如按成绩排序，小明和小红都是 90 分。如果排序前小明在小红前面，排序后仍然如此，这个排序算法就是\textbf{稳定}的；如果顺序可能颠倒，就是\textbf{不稳定}的。
+
+\begin{center}
+\begin{tabular}{@{}llll@{}}
+\toprule
+算法 & 平均时间复杂度 & 最坏时间复杂度 & 稳定性 \\
+\midrule
+冒泡排序 & $O(n^2)$ & $O(n^2)$ & 稳定 \\
+选择排序 & $O(n^2)$ & $O(n^2)$ & 不稳定 \\
+插入排序 & $O(n^2)$ & $O(n^2)$ & 稳定 \\
+希尔排序 & $O(n^{1.3})$ 左右 & $O(n^2)$ & 不稳定 \\
+归并排序 & $O(n\log n)$ & $O(n\log n)$ & 稳定 \\
+快速排序 & $O(n\log n)$ & $O(n^2)$ & 不稳定 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[初学阶段先掌握哪几个]
+先把\textbf{冒泡、选择、插入}写熟，理解“比较—交换”的基本套路；再学归并和快排理解“分治”。实际工程中，数据量不大时插入排序很好用；数据量大时直接用标准库 \code{qsort}。
+\end{tipbox}
+
+\section{冒泡排序}
+
+\subsection{思想}
+
+冒泡排序反复扫描数组，比较相邻的两个元素，如果顺序不对就交换。每一轮扫描都会把当前最大的元素“冒”到末尾。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \foreach \i/\v in {0/5,1/2,2/9,3/1,4/7} {
+      \node[membox,minimum width=1.3cm] (a\i) at (\i*1.6,0) {\v};
+      \node[font=\scriptsize,color=black!55,below=1mm of a\i] {\i};
+    }
+    \draw[ptr] ([yshift=3mm]a0.north) to[bend left=20] ([yshift=3mm]a1.north);
+    \draw[ptr] ([yshift=3mm]a1.north) to[bend left=20] ([yshift=3mm]a0.north);
+    \node[font=\scriptsize,color=ptrline,above=9mm] at (0.8,0) {比较并交换};
+    \node[font=\small,above=4mm] at (7,0) {一轮后最大值 9 到末尾};
+  \end{tikzpicture}
+  \caption{冒泡排序：相邻比较，大的往后换}
+  \label{fig:bubble}
+\end{figure}
+
+\subsection{代码实现}
+
+\begin{codebox}{bubble.c —— 冒泡排序}
+#include <stdio.h>
+
+void print_array(int a[], int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+}
+
+int main(void)
+{
+    int a[10] = {5, 2, 9, 1, 7, 3, 8, 6, 4, 0};
+    int n = 10;
+    int i, j, temp;
+    int swapped;
+
+    printf("排序前：");
+    print_array(a, n);
+
+    for (i = 0; i < n - 1; i++) {
+        swapped = 0;
+        for (j = 0; j < n - 1 - i; j++) {
+            if (a[j] > a[j + 1]) {
+                temp = a[j];
+                a[j] = a[j + 1];
+                a[j + 1] = temp;
+                swapped = 1;
+            }
+        }
+        if (swapped == 0) {
+            break;          /* 已经有序，提前结束 */
+        }
+    }
+
+    printf("排序后：");
+    print_array(a, n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+排序前：5 2 9 1 7 3 8 6 4 0 
+排序后：0 1 2 3 4 5 6 7 8 9 
+\end{outbox}
+
+要点：
+
+\begin{itemize}
+  \item 外层循环控制轮数，最多 $n-1$ 轮；
+  \item 内层循环比较相邻元素，第 $i$ 轮只需要比较前 $n-1-i$ 个；
+  \item \code{swapped} 标志用于优化：如果一轮下来没有交换，说明已经有序，可以提前结束。
+\end{itemize}
+
+\section{选择排序}
+
+\subsection{思想}
+
+选择排序每一轮从“未排序部分”里选出最小的元素，放到未排序部分的第一个位置。
+
+\begin{codebox}{selection.c —— 选择排序}
+#include <stdio.h>
+
+void print_array(int a[], int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+}
+
+int main(void)
+{
+    int a[10] = {5, 2, 9, 1, 7, 3, 8, 6, 4, 0};
+    int n = 10;
+    int i, j, min_index, temp;
+
+    printf("排序前：");
+    print_array(a, n);
+
+    for (i = 0; i < n - 1; i++) {
+        min_index = i;
+        for (j = i + 1; j < n; j++) {
+            if (a[j] < a[min_index]) {
+                min_index = j;
+            }
+        }
+        if (min_index != i) {
+            temp = a[i];
+            a[i] = a[min_index];
+            a[min_index] = temp;
+        }
+    }
+
+    printf("排序后：");
+    print_array(a, n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+排序前：5 2 9 1 7 3 8 6 4 0 
+排序后：0 1 2 3 4 5 6 7 8 9 
+\end{outbox}
+
+选择排序的交换次数最少（最多 $n-1$ 次），适合“交换代价大”的场景。但它的比较次数固定是 $O(n^2)$。
+
+\section{插入排序}
+
+\subsection{思想}
+
+插入排序像整理扑克牌：左边是已经排好序的牌，每次拿一张新牌，从右往左找到合适的位置插进去。
+
+\begin{codebox}{insertion.c —— 插入排序}
+#include <stdio.h>
+
+void print_array(int a[], int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+}
+
+int main(void)
+{
+    int a[10] = {5, 2, 9, 1, 7, 3, 8, 6, 4, 0};
+    int n = 10;
+    int i, j, key;
+
+    printf("排序前：");
+    print_array(a, n);
+
+    for (i = 1; i < n; i++) {
+        key = a[i];
+        j = i - 1;
+        while (j >= 0 && a[j] > key) {
+            a[j + 1] = a[j];
+            j--;
+        }
+        a[j + 1] = key;
+    }
+
+    printf("排序后：");
+    print_array(a, n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+排序前：5 2 9 1 7 3 8 6 4 0 
+排序后：0 1 2 3 4 5 6 7 8 9 
+\end{outbox}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \foreach \i/\v in {0/2,1/5,2/9,3/1,4/7} {
+      \node[membox,minimum width=1.2cm] (b\i) at (\i*1.5,0) {\v};
+    }
+    \node[font=\scriptsize,color=structurecolor,above=2mm] at (0,0) {已排序};
+    \node[font=\scriptsize,color=structurecolor,above=2mm] at (1.5,0) {已排序};
+    \node[font=\scriptsize,color=ptrline,above=2mm] at (4.5,0) {待插入 1};
+    \draw[ptr] ([yshift=-3mm]b3.south) to[bend right=25] ([yshift=-3mm]b0.south);
+    \node[font=\scriptsize,color=ptrline,below=6mm] at (2.2,0) {比 9、5、2 都小，插到最前面};
+  \end{tikzpicture}
+  \caption{插入排序：把当前元素插入左边已排序部分的正确位置}
+  \label{fig:insertion}
+\end{figure}
+
+插入排序在数据“基本有序”时非常快，接近 $O(n)$。这也是很多库在数据量很小时改用插入排序的原因。
+
+\section{希尔排序}
+
+插入排序每次只能把元素往前挪一位，效率受限于“逆序对”的数量。希尔排序（Shell sort）先按较大间隔分组做插入排序，让元素可以“大步”移动，再逐步缩小间隔，最后做一次普通插入排序。
+
+\begin{codebox}{shell.c —— 希尔排序}
+#include <stdio.h>
+
+void print_array(int a[], int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+}
+
+int main(void)
+{
+    int a[10] = {5, 2, 9, 1, 7, 3, 8, 6, 4, 0};
+    int n = 10;
+    int gap, i, j, temp;
+
+    printf("排序前：");
+    print_array(a, n);
+
+    for (gap = n / 2; gap > 0; gap = gap / 2) {
+        for (i = gap; i < n; i++) {
+            temp = a[i];
+            j = i - gap;
+            while (j >= 0 && a[j] > temp) {
+                a[j + gap] = a[j];
+                j = j - gap;
+            }
+            a[j + gap] = temp;
+        }
+    }
+
+    printf("排序后：");
+    print_array(a, n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+排序前：5 2 9 1 7 3 8 6 4 0 
+排序后：0 1 2 3 4 5 6 7 8 9 
+\end{outbox}
+
+希尔排序的时间复杂度与“间隔序列”的选取有关，常见取法每次减半，平均约 $O(n^{1.3})$。它实现简单、不需要额外空间，是插入排序的实用升级版。
+
+\section{归并排序}
+
+\subsection{分治思想}
+
+归并排序把数组分成两半，分别排序，再把两个有序数组合并成一个有序数组。这是典型的“分治”：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,level distance=12mm,
+    level 1/.style={sibling distance=52mm},
+    level 2/.style={sibling distance=26mm}]
+    \node[box] {5 2 9 1 7 3 8 6}
+      child {node[box] {5 2 9 1}
+        child {node[box] {5 2}}
+        child {node[box] {9 1}}}
+      child {node[box] {7 3 8 6}
+        child {node[box] {7 3}}
+        child {node[box] {8 6}}};
+  \end{tikzpicture}
+  \caption{归并排序：不断二分，直到每组只剩一个元素，再两两合并}
+  \label{fig:merge-tree}
+\end{figure}
+
+\subsection{代码实现}
+
+\begin{codebox}{merge.c —— 归并排序}
+#include <stdio.h>
+
+void print_array(int a[], int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+}
+
+void merge(int a[], int left, int mid, int right)
+{
+    int n1 = mid - left + 1;
+    int n2 = right - mid;
+    int L[50];
+    int R[50];
+    int i, j, k;
+
+    for (i = 0; i < n1; i++) {
+        L[i] = a[left + i];
+    }
+    for (j = 0; j < n2; j++) {
+        R[j] = a[mid + 1 + j];
+    }
+
+    i = 0;
+    j = 0;
+    k = left;
+    while (i < n1 && j < n2) {
+        if (L[i] <= R[j]) {
+            a[k] = L[i];
+            i++;
+        } else {
+            a[k] = R[j];
+            j++;
+        }
+        k++;
+    }
+    while (i < n1) {
+        a[k] = L[i];
+        i++;
+        k++;
+    }
+    while (j < n2) {
+        a[k] = R[j];
+        j++;
+        k++;
+    }
+}
+
+void merge_sort(int a[], int left, int right)
+{
+    int mid;
+
+    if (left < right) {
+        mid = (left + right) / 2;
+        merge_sort(a, left, mid);
+        merge_sort(a, mid + 1, right);
+        merge(a, left, mid, right);
+    }
+}
+
+int main(void)
+{
+    int a[8] = {5, 2, 9, 1, 7, 3, 8, 6};
+    int n = 8;
+
+    printf("排序前：");
+    print_array(a, n);
+
+    merge_sort(a, 0, n - 1);
+
+    printf("排序后：");
+    print_array(a, n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+排序前：5 2 9 1 7 3 8 6 
+排序后：1 2 3 5 6 7 8 9 
+\end{outbox}
+
+归并排序的时间复杂度稳定在 $O(n\log n)$，而且是稳定的。缺点是需要额外的临时数组，空间复杂度 $O(n)$。
+
+\section{快速排序}
+
+\subsection{思想}
+
+快速排序选一个“基准”（pivot），把数组分成两部分：左边都不大于基准，右边都不小于基准，然后对左右两部分递归排序。
+
+\begin{codebox}{quick.c —— 快速排序}
+#include <stdio.h>
+
+void print_array(int a[], int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+}
+
+void quick_sort(int a[], int left, int right)
+{
+    int i, j, pivot, temp;
+
+    if (left >= right) {
+        return;
+    }
+
+    pivot = a[left];
+    i = left;
+    j = right;
+    while (i < j) {
+        while (i < j && a[j] >= pivot) {
+            j--;
+        }
+        a[i] = a[j];
+        while (i < j && a[i] <= pivot) {
+            i++;
+        }
+        a[j] = a[i];
+    }
+    a[i] = pivot;
+
+    quick_sort(a, left, i - 1);
+    quick_sort(a, i + 1, right);
+}
+
+int main(void)
+{
+    int a[8] = {5, 2, 9, 1, 7, 3, 8, 6};
+    int n = 8;
+
+    printf("排序前：");
+    print_array(a, n);
+
+    quick_sort(a, 0, n - 1);
+
+    printf("排序后：");
+    print_array(a, n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+排序前：5 2 9 1 7 3 8 6 
+排序后：1 2 3 5 6 7 8 9 
+\end{outbox}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \foreach \i/\v/\c in {0/5/ptrfill,1/2/white,2/9/white,3/1/white,4/7/white,5/3/white,6/8/white,7/6/white} {
+      \node[draw=structurecolor!70,fill=\c,minimum width=1.2cm,minimum height=0.7cm] (q\i) at (\i*1.3,0) {\v};
+    }
+    \node[font=\scriptsize,color=ptrline,above=2mm of q0] {pivot};
+    \draw[decorate,decoration={brace,amplitude=3pt},structurecolor!60]
+      ([yshift=-4mm]q1.south west) -- ([yshift=-4mm]q3.south east);
+    \node[font=\scriptsize,below=6mm] at (2.0,-0.2) {不大于 pivot};
+    \draw[decorate,decoration={brace,amplitude=3pt},structurecolor!60]
+      ([yshift=-4mm]q4.south west) -- ([yshift=-4mm]q7.south east);
+    \node[font=\scriptsize,below=6mm] at (5.5,-0.2) {不小于 pivot};
+  \end{tikzpicture}
+  \caption{快速排序的一趟划分：基准归位，左边小、右边大}
+  \label{fig:quick-partition}
+\end{figure}
+
+快速排序平均 $O(n\log n)$，常数小，实际很快；但如果每次选的基准都是最大或最小值（例如数组已经有序且总选第一个），会退化成 $O(n^2)$。工程上常用“随机基准”或“三数取中”来避免。
+
+\section{结构体数组排序}
+
+排序的对象不一定是整数。用冒泡排序按成绩从高到低排列学生：
+
+\begin{codebox}{sort-struct.c —— 按成绩排序学生}
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    char name[20];
+    double score;
+} Student;
+
+void print_students(Student s[], int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d %-8s %.1f\n", s[i].id, s[i].name, s[i].score);
+    }
+}
+
+int main(void)
+{
+    Student cls[5] = {
+        {1001, "Alice", 92.5},
+        {1002, "Bob",   78.0},
+        {1003, "Carol", 85.5},
+        {1004, "Dave",  66.0},
+        {1005, "Eve",   95.0}
+    };
+    int n = 5;
+    int i, j;
+    Student temp;
+
+    for (i = 0; i < n - 1; i++) {
+        for (j = 0; j < n - 1 - i; j++) {
+            if (cls[j].score < cls[j + 1].score) {
+                temp = cls[j];
+                cls[j] = cls[j + 1];
+                cls[j + 1] = temp;
+            }
+        }
+    }
+
+    print_students(cls, n);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+1005 Eve      95.0
+1001 Alice    92.5
+1003 Carol    85.5
+1002 Bob      78.0
+1004 Dave     66.0
+\end{outbox}
+
+比较的是 \code{score}，交换的是整个结构体。结构体可以整体赋值，所以交换写起来很自然。
+
+\section{标准库排序：\texttt{qsort}}
+
+C 标准库提供了通用的排序函数 \code{qsort}，它在 \file{stdlib.h} 中。使用它需要写一个比较函数：
+
+\begin{codebox}{qsort.c —— 用 qsort 排序}
+#include <stdio.h>
+#include <stdlib.h>
+
+int cmp_int(const void *a, const void *b)
+{
+    int x = *(const int *)a;
+    int y = *(const int *)b;
+
+    if (x < y) {
+        return -1;
+    } else if (x > y) {
+        return 1;
+    }
+    return 0;
+}
+
+int main(void)
+{
+    int a[10] = {5, 2, 9, 1, 7, 3, 8, 6, 4, 0};
+    int i;
+
+    qsort(a, 10, sizeof(int), cmp_int);
+
+    for (i = 0; i < 10; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+0 1 2 3 4 5 6 7 8 9 
+\end{outbox}
+
+\code{qsort} 的四个参数：数组首地址、元素个数、每个元素大小、比较函数。比较函数的返回值：
+
+\begin{itemize}
+  \item 小于 0：\code{a} 排在 \code{b} 前面；
+  \item 等于 0：视为相等；
+  \item 大于 0：\code{a} 排在 \code{b} 后面。
+\end{itemize}
+
+\begin{tipbox}[实际工程优先用 \texttt{qsort}]
+自己手写排序主要用于学习。工程代码里优先用标准库：它经过充分优化，而且减少出错。只有在对稳定性、内存有特殊要求时，才考虑自己实现。
+\end{tipbox}
+
+\section{排序后的二分查找}
+
+排序的一个重要用途是加速查找。第 6 章已经介绍过二分查找，这里再完整写一遍：
+
+\begin{codebox}{binary-search2.c —— 排序 + 二分查找}
+#include <stdio.h>
+
+int main(void)
+{
+    int a[10] = {1, 3, 5, 7, 9, 11, 13, 15, 17, 19};
+    int key = 13;
+    int low = 0;
+    int high = 9;
+    int mid;
+    int pos = -1;
+
+    while (low <= high) {
+        mid = (low + high) / 2;
+        if (a[mid] == key) {
+            pos = mid;
+            break;
+        } else if (a[mid] < key) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    printf(pos >= 0 ? "下标 %d\n" : "没找到\n", pos);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+下标 6
+\end{outbox}
+
+二分查找的前提是\textbf{数组有序}。无序数组只能线性查找。
+
+\section{如何选择排序算法}
+
+\begin{center}
+\begin{tabular}{@{}p{0.3\textwidth}p{0.6\textwidth}@{}}
+\toprule
+场景 & 建议 \\
+\midrule
+数据量很小（$n < 50$） & 插入排序或选择排序 \\
+数据基本有序 & 插入排序 \\
+要求稳定 & 归并排序或插入排序 \\
+追求平均性能 & 快速排序或 \code{qsort} \\
+内存紧张 & 堆排序、希尔排序（不用额外数组） \\
+需要多次查找 & 先排序，再二分查找 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{deepbox}[拔高：用 \texttt{clock} 比较排序速度]
+\begin{codebox}{benchmark.c —— 粗略测速}
+#include <stdio.h>
+#include <time.h>
+
+int main(void)
+{
+    clock_t start, end;
+    /* 准备数据和排序代码 */
+    start = clock();
+    /* sort(a, n); */
+    end = clock();
+
+    printf("耗时 %.3f 秒\n", (double)(end - start) / CLOCKS_PER_SEC);
+    return 0;
+}
+\end{codebox}
+不同数据规模、不同数据分布（随机、有序、逆序）下测一测，你会对“时间复杂度”有更直观的感受。
+\end{deepbox}
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.22\textwidth}p{0.68\textwidth}@{}}
+\toprule
+算法 & 要点 \\
+\midrule
+冒泡 & 相邻比较交换，每轮把最大值冒到末尾；可提前退出 \\
+选择 & 每轮选最小值放到前面；交换次数少 \\
+插入 & 像抓牌，插入已排序部分；基本有序时很快 \\
+希尔 & 按间隔分组插入，逐步缩小间隔 \\
+归并 & 二分 + 合并；$O(n\log n)$，稳定，需额外空间 \\
+快速 & 选基准划分，递归排序；平均最快，最坏 $O(n^2)$ \\
+\code{qsort} & 标准库通用排序，需写比较函数 \\
+排序用途 & 排名、取中位数、二分查找、去重 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[下一章预告]
+最后一块拼图是\textbf{宏定义}。它看起来只是“文本替换”，却能做常量、函数式宏、条件编译、调试开关，甚至是自动生成代码。用得好是利器，用不好是灾难——这一章会告诉你边界在哪里。
+\end{tipbox}
+
+\begin{problemset}
+  \item 用冒泡排序把 10 个整数升序排列，输出每一轮的结果。
+  \item 用选择排序把 10 个整数降序排列。
+  \item 用插入排序排序，并统计比较次数和移动次数。
+  \item 用希尔排序排序，尝试不同的间隔序列。
+  \item 用归并排序排序，输出合并过程。
+  \item 用快速排序排序，输出每次划分后的数组。
+  \item 用 \code{qsort} 对学生数组按成绩从高到低排序。
+  \item 先排序，再用二分查找查找某个值，输出比较次数。
+  \item 比较冒泡、插入、快速排序在 $n=1000$ 时的运行时间。
+  \item 思考题：为什么冒泡排序是稳定的，而选择排序不稳定？举一个反例。
+\end{problemset}

@@ -1,0 +1,187 @@
+\chapter*{写在前面}
+\markboth{写在前面}{写在前面}
+\addcontentsline{toc}{chapter}{写在前面}
+
+\section*{这本书是写给谁的}
+
+这本书写给刚加入电控算法组的你。
+
+也许你之前从未写过一行代码；也许你在高中信息课上看过 \code{print("hello")}，但不知道它为什么能运行；也许你用过 Python，却对“指针”“内存”这些词心存畏惧。都没关系。这本书假设你\textbf{只会用电脑，不会编程}，从“计算机里到底发生了什么”讲起，一步一步把你带到能独立写出一个像样程序的位置。
+
+我们不追求“三天速成”，也不打算把你训练成“语法词典”。我们想让你建立三样东西：
+
+\begin{enumerate}
+  \item \textbf{一个正确的心智模型}：知道变量住在内存的哪里、数组为什么从 0 开始、指针到底指向什么；
+  \item \textbf{一套可靠的编程习惯}：先想清楚再动手、先声明再使用、写完就编译、出错会调试；
+  \item \textbf{一种工程化的思维方式}：把大问题拆成小问题，把重复劳动交给循环和函数，把“能跑”变成“可读、可改、可维护”。
+\end{enumerate}
+
+\section*{为什么电控算法组要学 C}
+
+你以后会接触电机、电池、传感器、嵌入式控制器，会写让无人机悬停、让小车循迹、让机械臂抓取的算法。这些场景有一个共同点：\textbf{程序要直接和硬件打交道，而且要在有限的时间、有限的内存里稳定运行}。
+
+C 语言正好站在“硬件”和“算法”的交界处：
+
+\begin{itemize}
+  \item 它\textbf{贴近硬件}：一个 \code{int} 占几个字节、数组在内存里怎么排布、指针里存的是哪个地址，你都能说得清；
+  \item 它\textbf{足够快}：没有隐藏的运行时开销，适合实时控制；
+  \item 它\textbf{足够小}：从 8 位单片机到服务器，几乎处处都有 C 编译器；
+  \item 它\textbf{是很多语言的地基}：C++、Rust、Python 解释器、操作系统内核，都能看到它的影子。
+\end{itemize}
+
+学会 C，不只是学会一门语言，更是学会“站在机器的角度思考”。以后你再学 C++、学数据结构、学嵌入式，都会轻松很多。
+
+\section*{关于“C98”和本书的代码标准}
+
+你可能会听到“C98”这个说法。严格来说，C 语言的标准版本叫 \textbf{C89}（1989 年 ANSI 标准，也叫 C90），之后还有 C99、C11、C17 等。本书所说的“C98 风格”，我们理解为：\textbf{按 C89/C90 的规矩写代码}。
+
+这带来几条你必须从一开始就养成的习惯：
+
+\begin{c89box}[本书的 C89/C90 硬性约定]
+\begin{enumerate}
+  \item \textbf{先声明，后使用}：所有变量都写在语句块（\texttt{\{}）的开头，声明之前不能执行任何语句。
+  \item \textbf{循环变量要在外面声明}：写成
+        \code{int i; for (i = 0; i < n; i++)}，
+        \textbf{不能}写成 \code{for (int i = 0; ...)}——后者是 C99 才允许的。
+  \item \textbf{只用 \code{/* */} 注释}，不用 \code{//}（\code{//} 是 C99 引入的）。
+  \item \textbf{函数必须写返回类型}，\code{main} 结尾写 \code{return 0;}。
+  \item \textbf{不使用变长数组}（\code{int a[n];} 且 \code{n} 是变量），数组长度必须是编译期常量。
+\end{enumerate}
+\end{c89box}
+
+为什么这么“老派”？因为电控领域大量使用老编译器、老代码库和严格的编码规范（例如汽车电子的 MISRA C）。先把规矩学正，以后换到任何环境都不会被“惯坏”。而且，这些限制会逼你把“声明”和“逻辑”分开，代码反而更清楚。
+
+\begin{tipbox}[如果你的编译器报错……]
+如果你的环境默认使用 C99 或更新标准，用 \code{for (int i = ...)} 可能不会报错，但这不代表它符合本书约定。请主动按 C89 的写法练习。附录~\ref{app:toolchain} 给出了推荐的编译命令，其中包含 \code{-std=c89 -pedantic} 选项，可以帮你检查出不合规的写法。
+\end{tipbox}
+
+\section*{怎么读这本书}
+
+\subsection*{第一遍：顺着读，别跳}
+
+本书的章节顺序是精心安排的：先认识机器（第 1 章），再学“一条一条往下走”的顺序结构（第 2 章），然后才学判断（第 3、4 章）和循环（第 5 章）。数组、结构体、指针、字符串这四章是“数据怎么组织”的递进关系，排序算法则是前四章的综合运用，宏定义放在最后，讲的是“写代码的代码”。
+
+请不要因为“这章好像很简单”就跳过。很多同学最后卡在指针，根源往往是前面数组和内存模型没学扎实。
+
+\subsection*{第二遍：把代码敲一遍}
+
+本书所有完整程序都可以直接编译运行。请\textbf{亲手敲}，不要复制粘贴。敲代码时你会被迫注意分号、括号、大小写，这些“低级错误”是每个程序员都要经历的。
+
+每敲完一个程序，做三件事：
+
+\begin{enumerate}
+  \item 预测输出：先别运行，想一想它会打印什么；
+  \item 运行对照：和你的预测比较，不一样就追问“为什么”；
+  \item 改一改：改一个数字、删一个分号、把 \code{<} 改成 \code{<=}，看看会发生什么。
+\end{enumerate}
+
+\subsection*{第三遍：做章末习题}
+
+每章末尾都有习题，附录~\ref{app:answers} 给出参考答案与提示。建议先自己写，卡住 20 分钟再看答案。看懂答案不等于会写，合上答案再默写一遍，才算真的会。
+
+\section*{本书的排版约定}
+
+为了让你在阅读时快速抓住重点，本书用了几种固定的“视觉语言”：
+
+\begin{center}
+\begin{tabular}{@{}p{0.22\textwidth}p{0.68\textwidth}@{}}
+\toprule
+\textbf{版式} & \textbf{含义} \\
+\midrule
+蓝色标题的“定义”盒 & 重要概念的正式定义，第一次出现时务必读懂 \\
+绿色“小贴士” & 经验、技巧、可以让你少走弯路的建议 \\
+橙色“小心有坑” & 常见错误、易混淆点，考试和调试中的高频雷区 \\
+蓝灰色“C89 约定” & 与代码标准相关的硬性规定 \\
+紫色“拔高阅读” & 选读内容，第一次读不懂可以先跳过，不影响后续学习 \\
+带行号的浅色代码盒 & 完整或半完整的 C 程序，可直接编译 \\
+“运行结果”盒 & 程序在典型环境下的输出 \\
+“例题 / 解答” & 带完整分析过程的示范题 \\
+“本章练习” & 章末习题，答案见附录~\ref{app:answers} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+正文中的行内代码用等宽字体表示，例如 \code{printf}、\code{&a}、\code{a[i]}。
+
+\section*{学习地图}
+
+图~\ref{fig:map} 是全书的学习路线。可以把它贴在显示器旁边：每学完一章，就在心里点亮一个格子。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
+    % 三个阶段背景
+    \fill[structurecolor!6,rounded corners=3mm] (-0.4,-0.2) rectangle (5.2,5.4);
+    \fill[main!6,rounded corners=3mm] (5.4,-0.2) rectangle (11.0,5.4);
+    \fill[second!6,rounded corners=3mm] (11.2,-0.2) rectangle (16.4,5.4);
+    \node[font=\small\bfseries,color=structurecolor] at (2.4,5.0) {第一阶段：认识机器与基本语句};
+    \node[font=\small\bfseries,color=main!80!black] at (8.2,5.0) {第二阶段：组织数据};
+    \node[font=\small\bfseries,color=second!80!black] at (13.8,5.0) {第三阶段：算法与工程};
+
+    % 节点
+    \node[box,minimum width=2.6cm] (c1) at (1.2,4.0) {1 计算机组成};
+    \node[box,minimum width=2.6cm] (c2) at (3.9,3.1) {2 顺序结构};
+    \node[box,minimum width=2.6cm] (c3) at (2.4,2.0) {3 运算符};
+    \node[box,minimum width=2.6cm] (c4) at (3.9,0.9) {4 分支};
+    \node[box,minimum width=2.6cm] (c5) at (1.4,0.0) {5 循环};
+
+    \node[box,minimum width=2.6cm] (c6) at (6.4,4.0) {6 数组};
+    \node[box,minimum width=2.6cm] (c7) at (9.6,3.4) {7 结构体};
+    \node[box,minimum width=2.6cm] (c8) at (7.0,2.4) {8 指针};
+    \node[box,minimum width=2.6cm] (c9) at (9.8,1.4) {9 字符串};
+
+    \node[box,minimum width=2.6cm] (c10) at (12.8,2.6) {10 排序算法};
+    \node[box,minimum width=2.6cm] (c11) at (14.6,1.2) {11 宏定义};
+
+    % 连接
+    \draw[flow] (c1) -- (c2);
+    \draw[flow] (c2) -- (c3);
+    \draw[flow] (c3) -- (c4);
+    \draw[flow] (c4) -- (c5);
+    \draw[flow] (c5.east) to[bend left=12] (c6.west);
+    \draw[flow] (c6) -- (c7);
+    \draw[flow] (c7) -- (c8);
+    \draw[flow] (c8) -- (c9);
+    \draw[flow] (c9) -- (c10);
+    \draw[flow] (c10) -- (c11);
+
+    % 注释
+    \node[lbl,align=center] at (3.0,2.75) {先会走路};
+    \node[lbl,align=center] at (8.5,0.7) {数据是一切的载体};
+    \node[lbl,align=center] at (13.4,0.2) {把学过的用起来};
+  \end{tikzpicture}
+  \caption{全书学习路线：先建立机器模型，再学控制流程，然后组织数据，最后进入算法与工程}
+  \label{fig:map}
+\end{figure}
+
+\begin{tipbox}[三个“不要”]
+不要只看不敲；不要一遇到报错就问人（先自己读错误信息）；不要背语法，要理解“这条语句让内存发生了什么”。
+\end{tipbox}
+
+\section*{开发环境}
+
+本书不绑定任何编辑器。你只需要一个能编译 C89 的编译器（推荐 GCC/MinGW），以及一个顺手的编辑器（VS Code、Notepad++、Vim 都可以）。安装步骤、编译命令和常见报错见附录~\ref{app:toolchain}。
+
+第一个程序永远是：
+
+\begin{codebox}{hello.c —— 一切的开始}
+#include <stdio.h>
+
+int main(void)
+{
+    printf("Hello, world!\n");
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+Hello, world!
+\end{outbox}
+
+如果它能跑起来，恭喜你，你已经迈出了第一步。接下来，我们先把“计算机到底是怎么执行这行字的”弄清楚——这会让你后面少走很多弯路。
+
+\vspace{1em}
+\begin{flushright}
+\kaishu 电控算法组\\
+2026 年 10 月
+\end{flushright}

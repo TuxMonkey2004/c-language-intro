@@ -1,0 +1,877 @@
+\chapter{计算机组成基础}
+
+\begin{introduction}
+  \item 程序运行时，机器里到底发生了什么
+  \item 二进制、十六进制，以及为什么计算机只认 0 和 1
+  \item 整数在内存里怎么放：原码、反码、补码
+  \item 小数在内存里怎么放：IEEE 754 浮点数
+  \item 内存、地址、字节序与存储层次
+  \item 从源代码到可执行文件的完整旅程
+  \item C 语言与这台机器之间的对应关系
+\end{introduction}
+
+\chaptermotto{「计算机不像人那样思考，但它从不偷懒。」}
+
+很多同学学 C 语言的方式是：背语法、抄代码、看它能不能跑。这样也能入门，但学到指针、数组越界、浮点误差的时候，就会开始怀疑人生——因为那些问题\textbf{不是语法问题，而是机器模型问题}。
+
+这一章不写复杂的程序。我们先把“舞台”搭好：看看一台计算机由哪些部分组成，数据以什么形式存在，一条语句是怎样变成机器动作的。等你看完这一章，再回头写 \code{printf("Hello, world!\n");}，你会知道这行字背后究竟发生了什么。
+
+\section{从一个按钮说起}
+
+假设你写好了程序，双击运行，屏幕上出现了一行字。这中间发生了什么？
+
+最粗略地说，经历了这样一条链：
+
+\begin{center}
+\begin{tikzpicture}[node distance=11mm,>=Stealth]
+  \node[box] (src) {源代码\\\texttt{hello.c}};
+  \node[box,right=of src] (exe) {可执行文件\\\texttt{hello.exe}};
+  \node[box,right=of exe] (os) {操作系统\\加载程序};
+  \node[box,right=of os] (cpu) {CPU\\执行指令};
+  \node[box,right=of cpu] (out) {屏幕\\显示文字};
+  \draw[flow] (src) -- node[lbl,above]{编译} (exe);
+  \draw[flow] (exe) -- node[lbl,above]{双击} (os);
+  \draw[flow] (os) -- node[lbl,above]{调度} (cpu);
+  \draw[flow] (cpu) -- node[lbl,above]{输出} (out);
+\end{tikzpicture}
+\end{center}
+
+这条链里，编译器、操作系统、CPU、内存、显卡都参与了工作。我们一个一个认识。
+
+\subsection{计算机的五大部分}
+
+1945 年，冯·诺依曼提出了一种沿用至今的计算机结构。它的核心思想只有一句话：
+
+\begin{center}
+\fbox{\parbox{0.82\textwidth}{\centering\kaishu 程序和数据放在同一个存储器里，CPU 按顺序取出指令、执行指令。}}
+\end{center}
+
+按照这个思想，一台计算机可以分成五大部分，如图~\ref{fig:von-neumann} 所示。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
+    % CPU 大框
+    \draw[structurecolor!70!black,fill=structurecolor!7,rounded corners=2mm,line width=0.8pt]
+      (0,2.6) rectangle (5.2,7.4);
+    \node[font=\small\bfseries,color=structurecolor!80!black] at (2.6,7.0) {中央处理器 CPU};
+
+    \node[draw,fill=white,rounded corners=1mm,minimum width=1.9cm,minimum height=1.1cm,align=center,font=\small]
+      (alu) at (1.2,5.6) {运算器\\ALU};
+    \node[draw,fill=white,rounded corners=1mm,minimum width=1.9cm,minimum height=1.1cm,align=center,font=\small]
+      (cu) at (3.9,5.6) {控制器\\CU};
+    \node[draw,fill=white,rounded corners=1mm,minimum width=1.9cm,minimum height=1.0cm,align=center,font=\small]
+      (reg) at (1.2,3.7) {寄存器\\Registers};
+    \node[draw,fill=white,rounded corners=1mm,minimum width=1.9cm,minimum height=1.0cm,align=center,font=\small]
+      (pc) at (3.9,3.7) {程序计数器\\PC};
+
+    % 内存
+    \node[draw=memline,fill=memfill,rounded corners=2mm,minimum width=2.6cm,minimum height=3.2cm,align=center]
+      (mem) at (7.9,4.6) {内存\\[2pt]\small 程序 + 数据};
+
+    % 输入输出
+    \node[box,minimum width=2.0cm] (in) at (2.6,0.7) {输入设备};
+    \node[box,minimum width=2.0cm] (out) at (7.9,0.7) {输出设备};
+
+    % 总线
+    \draw[bus] (2.6,2.4) -- (2.6,2.0);
+    \draw[bus] (7.9,2.6) -- (7.9,2.0);
+    \draw[bus] (0.2,1.6) -- (9.3,1.6);
+    \draw[bus] (in.north) -- (2.6,2.0);
+    \draw[bus] (out.north) -- (7.9,2.0);
+    \draw[bus] (2.6,2.0) -- (2.6,1.6);
+    \draw[bus] (7.9,2.0) -- (7.9,1.6);
+    \node[lbl,fill=white,inner sep=2pt] at (5.0,1.6) {系统总线（地址 / 数据 / 控制）};
+
+    % CPU 与内存
+    \draw[bus] (5.2,5.2) -- (6.6,5.2);
+    \draw[bus,<->] (5.2,4.2) -- (6.6,4.2);
+    \node[lbl,above] at (5.9,5.2) {地址};
+    \node[lbl,below] at (5.9,4.2) {数据};
+  \end{tikzpicture}
+  \caption{冯·诺依曼结构：运算器、控制器、存储器、输入设备、输出设备}
+  \label{fig:von-neumann}
+\end{figure}
+
+这五部分各管什么？
+
+\begin{itemize}
+  \item \textbf{运算器（ALU，算术逻辑单元）}：做加减乘除、与或非、比较大小。它只会做很“笨”的运算，但速度极快。
+  \item \textbf{控制器（CU，控制单元）}：指挥全局。它从内存取出指令，翻译成“打开哪个开关、让哪条数据通过”，然后发出控制信号。
+  \item \textbf{寄存器（Registers）}：CPU 内部极小、极快的存储单元。运算的操作数先从内存搬到寄存器，算完再搬回去。
+  \item \textbf{程序计数器（PC，Program Counter）}：记住“下一条指令在哪里”。每执行完一条指令，PC 自动指向下一条；遇到跳转语句，PC 被改写。
+  \item \textbf{存储器（Memory）}：存放程序和数据。它由许多“格子”组成，每个格子有编号——这个编号就是\textbf{地址}。
+  \item \textbf{输入/输出设备}：键盘、鼠标、传感器、屏幕、电机驱动器……它们让计算机与外部世界交换信息。
+\end{itemize}
+
+\begin{tipbox}[把 CPU 想成一个小工厂]
+寄存器是工作台，ALU 是机床，控制器是车间主任，内存是仓库，总线是传送带。程序就是一张张写着“从仓库 3 号货架取零件，放到工作台，车一刀，再放回 5 号货架”的工单。CPU 做的事情，就是一张一张地执行工单。
+\end{tipbox}
+
+\subsection{指令周期：取指、译码、执行}
+
+CPU 的工作可以概括为一个不断循环的三步：
+
+\begin{enumerate}
+  \item \textbf{取指（Fetch）}：根据 PC 里的地址，从内存读出一条指令，放到指令寄存器；
+  \item \textbf{译码（Decode）}：控制器看懂这条指令要干什么，比如“把内存地址 0x1000 的内容加到寄存器 R1”；
+  \item \textbf{执行（Execute）}：ALU 运算、读写内存、修改 PC，然后回到第 1 步。
+\end{enumerate}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,node distance=2.2cm]
+    \node[process] (fetch) at (0,0) {取指\\Fetch};
+    \node[process] (decode) at (3.2,0) {译码\\Decode};
+    \node[process] (exec) at (6.4,0) {执行\\Execute};
+    \node[process] (store) at (3.2,-2.0) {写回 / 更新 PC\\Write-back};
+
+    \draw[flow] (fetch) -- (decode);
+    \draw[flow] (decode) -- (exec);
+    \draw[flow] (exec) -- (store);
+    \draw[flow] (store) -- (fetch);
+  \end{tikzpicture}
+  \caption{指令周期：CPU 一刻不停地重复“取指—译码—执行”}
+  \label{fig:cycle}
+\end{figure}
+
+现代 CPU 为了跑得更快，会把这三步流水线化（像工厂流水线一样，第一条指令在译码时，第二条已经在取指），还会做乱序执行、分支预测。但对你写 C 语言来说，记住这个最简单的模型就够了：\textbf{程序就是一条条指令，CPU 从 PC 指向的地方开始，一条条执行下去}。
+
+\begin{deepbox}[拔高：为什么你写的循环能跑那么快]
+一个每秒执行 $3\times10^9$ 次取指的 CPU，执行一条加法可能只需要不到一个纳秒。你写的 \code{for (i = 0; i < 1000000; i++)}，在机器层面就是“比较、跳转、加法”三条指令重复一百万次。所谓“优化”，很多时候就是想办法少做几次这样的重复，或者让 CPU 能并行地做。
+\end{deepbox}
+
+\subsection{一个加法在机器里的旅程}
+
+来看一句最简单的 C 语句：
+
+\begin{codebox}{add.c —— 一个加法}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 3;
+    int b = 5;
+    int c;
+
+    c = a + b;
+    printf("%d\n", c);
+    return 0;
+}
+\end{codebox}
+
+在机器层面，它大致经历了这些步骤（不同 CPU 细节不同，但思路一致）：
+
+\begin{enumerate}
+  \item 操作系统把程序加载到内存，把 PC 设置到 \code{main} 的第一条指令；
+  \item CPU 执行 \code{int a = 3;}：把立即数 3 写入内存中 \code{a} 对应的 4 个字节；
+  \item 执行 \code{int b = 5;}：把 5 写入 \code{b} 的地址；
+  \item 执行 \code{c = a + b;}：把 \code{a} 的值从内存读入寄存器，把 \code{b} 的值读入另一个寄存器，ALU 相加，把结果写回 \code{c} 的内存；
+  \item 执行 \code{printf}：把 \code{c} 的值、格式串的地址传给 \code{printf} 函数，由它负责把整数转换成字符，最终通过操作系统写到屏幕。
+\end{enumerate}
+
+\begin{note}
+注意第 5 步：屏幕上那个“8”并不是内存里直接存着一个字符 \code{'8'}。内存里存的是二进制 \code{00000000 00000000 00000000 00001000}，是 \code{printf} 把它“翻译”成了可显示的字符。\textbf{数据本身没有意义，意义来自我们如何解释它}。这是理解 C 语言类型系统的钥匙。
+\end{note}
+
+\section{一切皆比特：二进制}
+
+\subsection{为什么是二进制}
+
+计算机用电子元件存储信息。最简单的电子元件有两种稳定状态：通电 / 断电、高电平 / 低电平、有磁 / 无磁。用两种状态表示数字，最不容易出错，也最容易用电路实现。
+
+于是我们约定：
+
+\begin{itemize}
+  \item 一个有两种状态的元件，存一位（bit），记作 0 或 1；
+  \item 把 8 位组合起来，成为一个字节（byte）；
+  \item 字节是内存的基本编址单位——\textbf{每个字节有一个地址}。
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{@{}ccccccccc@{}}
+\toprule
+位序 & 7 & 6 & 5 & 4 & 3 & 2 & 1 & 0 \\
+\midrule
+二进制 & 1 & 0 & 1 & 1 & 0 & 1 & 1 & 0 \\
+权值 & $2^7$ & $2^6$ & $2^5$ & $2^4$ & $2^3$ & $2^2$ & $2^1$ & $2^0$ \\
+ & 128 & 64 & 32 & 16 & 8 & 4 & 2 & 1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+这个字节的值是 $128+32+16+4+2=182$。
+
+\subsection{二进制与十进制互转}
+
+\textbf{二进制转十进制}：把为 1 的位对应的权值加起来。例如：
+
+\[
+(1011\,0110)_2 = 128 + 32 + 16 + 4 + 2 = 182.
+\]
+
+\textbf{十进制转二进制}：不断除以 2，记录余数，最后从下往上读。例如把 156 转成二进制：
+
+\begin{center}
+\begin{tabular}{@{}rccl@{}}
+\toprule
+步骤 & 商 & 余数 & 说明 \\
+\midrule
+$156 \div 2$ & 78 & 0 & 最低位 \\
+$78 \div 2$  & 39 & 0 & \\
+$39 \div 2$  & 19 & 1 & \\
+$19 \div 2$  & 9  & 1 & \\
+$9 \div 2$   & 4  & 1 & \\
+$4 \div 2$   & 2  & 0 & \\
+$2 \div 2$   & 1  & 0 & \\
+$1 \div 2$   & 0  & 1 & 最高位 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+从下往上读余数，得到 $(156)_{10} = (1001\,1100)_2$。
+
+\begin{example}
+把二进制 $1101\,0010$ 转成十进制。
+\end{example}
+\begin{solution}
+按权展开：
+\[
+(1101\,0010)_2 = 128 + 64 + 16 + 2 = 210.
+\]
+\end{solution}
+
+\subsection{十六进制：给人看的二进制}
+
+二进制写起来太长，容易数错。于是程序员习惯用十六进制（hexadecimal）作为二进制的“缩写”：\textbf{每 4 位二进制对应 1 位十六进制}。
+
+\begin{center}
+\begin{tabular}{@{}ccccccccc@{}}
+\toprule
+十进制 & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+十六进制 & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+\midrule
+十进制 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+十六进制 & 8 & 9 & A & B & C & D & E & F \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+例如：
+
+\[
+(1011\,0110)_2 = \underbrace{1011}_{B}\underbrace{0110}_{6} = \mathrm{B6}_{16}.
+\]
+
+C 语言里用 \code{0x} 前缀表示十六进制：\code{0xB6} 就是十进制的 182。八进制用前导 \code{0}，例如 \code{010} 是十进制的 8——这个规则很容易坑人，所以现代代码很少用八进制。
+
+\begin{pitfall}[前导 0 的陷阱]
+\code{int a = 010;} 在 C 语言里不是十进制的 10，而是八进制的 8！初学阶段建议：\textbf{写十进制就写十进制，写十六进制就加 \code{0x}，不要用前导 0}。
+\end{pitfall}
+
+\subsection{位、字节、字}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+单位 & 大小 & 说明 \\
+\midrule
+位（bit） & 1 个二进制位 & 最小单位，取值 0 或 1 \\
+字节（byte） & 8 位 & 内存编址的基本单位，1 字节 = 8 比特 \\
+字（word） & 通常 4 字节（32 位） & CPU 一次处理的数据宽度，随架构而变 \\
+KB / MB / GB & $1024$ / $1024^2$ / $1024^3$ 字节 & 注意：硬盘厂商常用 1000 进制 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+一个字节可以表示 $2^8 = 256$ 种不同的组合。如果把它解释为无符号整数，范围是 $0 \sim 255$；如果解释为有符号整数，范围是 $-128 \sim 127$。\textbf{同样的 8 个比特，解释方式不同，数值就不同}。
+
+\section{整数怎么存：原码、反码、补码}
+
+假设我们只讨论 8 位（1 字节）的整数。问题是：负数怎么表示？
+
+\subsection{最直观的想法：原码}
+
+用最高位表示符号（0 正 1 负），其余 7 位表示绝对值。这叫\textbf{原码}（sign-magnitude）。
+
+例如：
+\[
++5 = 0000\,0101, \qquad -5 = 1000\,0101.
+\]
+
+原码很直观，但有两个大问题：
+
+\begin{enumerate}
+  \item \textbf{有两个零}：\code{0000 0000} 是 +0，\code{1000 0000} 是 -0，浪费了一种编码；
+  \item \textbf{加法电路很麻烦}：正数和负数相加，要先比较绝对值大小、决定符号，再决定做加法还是减法。硬件实现复杂。
+\end{enumerate}
+
+\subsection{反码与补码}
+
+为了统一加减法，人们引入了\textbf{补码}（two's complement）。先看定义：
+
+\begin{definition}[补码]
+对于 $n$ 位二进制数，负数 $-x$ 的补码等于 $2^n - x$ 的二进制表示；等价地，等于 $x$ 的二进制\textbf{按位取反再加 1}。
+\end{definition}
+
+以 8 位为例，求 $-5$ 的补码：
+
+\begin{enumerate}
+  \item 写出 $+5$ 的二进制：\code{0000 0101}；
+  \item 按位取反：\code{1111 1010}；
+  \item 加 1：\code{1111 1011}。
+\end{enumerate}
+
+所以 $-5$ 在内存里是 \code{1111 1011}。
+
+\begin{example}
+求 $-25$ 的 8 位补码。
+\end{example}
+\begin{solution}
+$+25 = 0001\,1001$。按位取反得 $1110\,0110$，加 1 得 $1110\,0111$。所以 $-25$ 的补码是 \code{1110 0111}。
+\end{solution}
+
+\begin{example}
+已知某 8 位补码是 \code{1101 0110}，它表示十进制多少？
+\end{example}
+\begin{solution}
+最高位是 1，说明是负数。补码转原值的方法是“取反加一再加负号”：
+\[
+\text{取反} \to 0010\,1001, \quad \text{加一} \to 0010\,1010 = 42,
+\]
+所以原值是 $-42$。
+\end{solution}
+
+\subsection{补码为什么能统一加法}
+
+补码的本质是\textbf{模运算}。想象一个只有 12 个刻度的钟表：现在指向 3，要拨到 1，可以逆时针拨 2 格，也可以顺时针拨 10 格。在这个钟表上，“减 2”和“加 10”是同一件事。
+
+8 位二进制就是一个模 $2^8 = 256$ 的钟表：
+
+\[
+-5 \equiv 256 - 5 = 251 \pmod{256},
+\]
+
+而 251 的二进制正是 \code{1111 1011}。于是：
+
+\[
+3 + (-5) = 3 + 251 = 254 \equiv -2 \pmod{256},
+\]
+
+用二进制算一遍：
+
+\[
+0000\,0011 + 1111\,1011 = 1111\,1110,
+\]
+
+\code{1111 1110} 正是 $-2$ 的补码。\textbf{减法被转化成了加法，ALU 只需要一个加法器}。这就是补码成为现代计算机标准的原因。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
+    \draw[structurecolor!70,line width=0.8pt] (0,0) circle (2.2);
+    \foreach \i in {0,...,7} {
+      \pgfmathtruncatemacro{\ang}{90-\i*45}
+      \pgfmathtruncatemacro{\val}{\i*32}
+      \draw[structurecolor!50] (\ang:2.2) -- (\ang:2.35);
+      \node[font=\scriptsize] at (\ang:2.62) {\val};
+    }
+    \node[font=\small\bfseries,color=structurecolor] at (0,0.65) {8 位 = 模 256};
+    \node[font=\small,color=black!70] at (0,0.05) {减 5};
+    \node[font=\small,color=ptrline] at (0,-0.55) {$\equiv$ 加 251};
+    \draw[ptr,line width=0.7pt] (100:1.75) arc (100:-35:1.75);
+  \end{tikzpicture}
+  \caption{补码的钟表模型：在模 256 的世界里，减 5 等价于加 251（箭头方向为加 251 格）}
+  \label{fig:twos-complement}
+\end{figure}
+
+\subsection{补码的范围与溢出}
+
+8 位补码能表示的范围是：
+
+\[
+-128 \sim 127.
+\]
+
+为什么正数最大是 127，负数最小是 $-128$？因为 \code{1000 0000} 被规定为 $-128$（它没有对应的正数，因为 +128 超出了 8 位能表示的范围）。这带来一个不对称：负数比正数多一个。
+
+\begin{center}
+\begin{tabular}{@{}ccc@{}}
+\toprule
+8 位补码 & 十进制 & 说明 \\
+\midrule
+\code{0000 0000} & 0 & \\
+\code{0000 0001} & 1 & \\
+\code{0111 1111} & 127 & 最大正数 \\
+\code{1000 0000} & $-128$ & 最小负数 \\
+\code{1111 1111} & $-1$ & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+如果给 127 再加 1，会得到 \code{1000 0000}，也就是 $-128$。这叫作\textbf{整数溢出}（overflow）。看一个真实的 C 程序：
+
+\begin{codebox}{overflow.c —— 整数溢出}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 2147483647;     /* 32 位 int 的最大值 */
+
+    printf("before: %d\n", a);
+    a = a + 1;
+    printf("after : %d\n", a);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（常见 32 位 int 环境）}
+before: 2147483647
+after : -2147483648
+\end{outbox}
+
+\begin{pitfall}[有符号整数溢出是“未定义行为”]
+C 标准规定，有符号整数溢出属于\textbf{未定义行为}（undefined behavior）。上面程序在某些编译器上会得到 $-2147483648$，在另一些编译器上可能被优化成别的结果，甚至直接崩溃。\textbf{不要依赖溢出后的结果}。如果你确实需要“绕回来”的效果，应该使用无符号整数（\code{unsigned int}），它的溢出是明确定义的。
+\end{pitfall}
+
+\begin{deepbox}[拔高：为什么电控代码特别怕溢出]
+假设你用 \code{unsigned int} 记录系统运行时间（毫秒），它最大约 49.7 天。第 50 天时它会绕回 0。如果你的代码写的是
+\code{if (now > start) ...}，绕回后判断就会出错。成熟的嵌入式代码会用“差值”来比较时间：\code{if ((unsigned int)(now - start) > timeout)}，利用无符号减法的模运算特性，即使绕回也能正确工作。这个技巧在后面的运算符和指针章节还会遇到。
+\end{deepbox}
+
+\section{小数怎么存：浮点数}
+
+整数好办，小数怎么办？
+
+\subsection{定点数的局限}
+
+最直接的想法是“定点数”：约定小数点在第几位。例如用 16 位表示，前 8 位整数、后 8 位小数。这样能表示 $0.00390625$ 的精度，但范围很小：最大只能到 255.996。
+
+控制系统里既有很小的量（传感器噪声、PID 的微分项），又有很大的量（电机转速、位置），定点数不够用。于是人们采用\textbf{浮点数}：小数点位置可以浮动。
+
+\subsection{科学计数法：IEEE 754}
+
+十进制里，$1234.5$ 可以写成 $1.2345 \times 10^3$。二进制里类似：
+
+\[
+101.101_2 = 1.01101_2 \times 2^{2}.
+\]
+
+IEEE 754 标准把一个浮点数拆成三部分：\textbf{符号位}、\textbf{阶码（指数）}、\textbf{尾数（有效数字）}。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % 总宽 16cm：1 + 5 + 10（示意，非等比例）
+    \draw[structurecolor!80!black,fill=ptrfill,line width=0.6pt] (0,0) rectangle (1.0,1.2);
+    \draw[structurecolor!80!black,fill=structurecolor!10,line width=0.6pt] (1.0,0) rectangle (5.0,1.2);
+    \draw[structurecolor!80!black,fill=okfill,line width=0.6pt] (5.0,0) rectangle (15.0,1.2);
+    \node[font=\small\bfseries] at (0.5,0.6) {S};
+    \node[font=\small\bfseries] at (3.0,0.6) {E（8 位阶码）};
+    \node[font=\small\bfseries] at (10.0,0.6) {M（23 位尾数）};
+    \node[font=\scriptsize,color=ptrline,below] at (0.5,0) {1 位};
+    \node[font=\scriptsize,color=structurecolor,below] at (3.0,0) {8 位};
+    \node[font=\scriptsize,color=okline,below] at (10.0,0) {23 位};
+    \node[font=\scriptsize,above] at (7.5,1.3) {32 位 \texttt{float}：$(-1)^S \times 1.M \times 2^{E-127}$（示意，未按比例）};
+  \end{tikzpicture}
+  \caption{IEEE 754 单精度浮点数的位布局}
+  \label{fig:ieee754}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{符号位 S}：0 表示正，1 表示负；
+  \item \textbf{阶码 E}：实际指数加上偏移量 127（为了能表示负指数）；
+  \item \textbf{尾数 M}：隐藏了最高位的 1，所以实际有效数字是 $1.M$。
+\end{itemize}
+
+\begin{example}
+十进制 $0.5$ 的 \code{float} 表示是多少？
+\end{example}
+\begin{solution}
+$0.5 = 1.0 \times 2^{-1}$。所以 $S=0$，实际指数 $-1$，阶码 $E = -1 + 127 = 126 = 0111\,1110_2$，尾数 $M = 0$。拼起来就是
+\code{0 01111110 00000000000000000000000}，即十六进制 \code{0x3F000000}。
+\end{solution}
+
+\subsection{0.1 加 0.2 为什么不等于 0.3}
+
+有些小数在十进制里是有限的，在二进制里却是无限循环小数。例如 $0.1_{10}$ 的二进制是
+
+\[
+0.0001100110011001100110011\cdots_2
+\]
+
+一个 23 位的尾数装不下无限循环小数，只能舍入。于是内存里的 $0.1$ 并不是精确的 $0.1$，而是一个非常接近它的值。
+
+\begin{codebox}{double-precision.c —— 浮点数的真相}
+#include <stdio.h>
+
+int main(void)
+{
+    double a = 0.1;
+    double b = 0.2;
+    double c = a + b;
+
+    printf("0.1 + 0.2 = %.20f\n", c);
+    printf("c == 0.3 ? %d\n", c == 0.3);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（典型实现）}
+0.1 + 0.2 = 0.30000000000000004441
+c == 0.3 ? 0
+\end{outbox}
+
+\begin{pitfall}[浮点数不能用 == 直接比较]
+判断两个浮点数是否相等，正确做法是看它们的差是否小于一个很小的数（容差）：
+\begin{codebox}{float-compare.c —— 正确的比较方式}
+#include <stdio.h>
+#include <math.h>
+
+int main(void)
+{
+    double a = 0.1 + 0.2;
+    double b = 0.3;
+
+    if (fabs(a - b) < 1e-9) {
+        printf("在误差范围内相等\n");
+    } else {
+        printf("不相等\n");
+    }
+    return 0;
+}
+\end{codebox}
+\end{pitfall}
+
+\begin{deepbox}[拔高：浮点数在电控里的两个实际影响]
+\begin{enumerate}
+  \item \textbf{累积误差}：如果你用 \code{float} 累加 100 万次很小的数，误差可能大到影响判断。控制系统里常用 \code{double}，或者干脆用整数（定点数）来避免误差。
+  \item \textbf{性能与精度}：很多单片机没有浮点运算单元（FPU），一次浮点乘法可能比整数乘法慢几十倍。做电机控制时，工程师常把 PID 参数放大成整数来算，最后再缩小回去，这叫“定点化”。
+\end{enumerate}
+\end{deepbox}
+
+\section{内存：一个巨大的字节数组}
+
+\subsection{地址与变量}
+
+内存可以想象成一个巨大的、连续编号的抽屉柜，每个抽屉装 1 个字节（8 位），每个抽屉有一个编号，这个编号就是\textbf{地址}。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % 地址列
+    \foreach \i/\addr/\val in {0/0x1000/?,1/0x1001/?,2/0x1002/?,3/0x1003/?,4/0x1004/?,5/0x1005/?} {
+      \node[font=\ttfamily\scriptsize,color=black!60,anchor=east] at (0.2,-\i*0.9) {\addr};
+      \ifnum\i<4
+        \node[membox,minimum width=2.4cm] at (2.0,-\i*0.9) {\val};
+      \else
+        \node[emptybox,minimum width=2.4cm] at (2.0,-\i*0.9) {\val};
+      \fi
+    }
+    % 大括号
+    \draw[decorate,decoration={brace,amplitude=4pt},structurecolor!70,line width=0.7pt]
+      (3.4,0.3) -- (3.4,-2.4);
+    \node[anchor=west,font=\small] at (3.6,-1.05) {变量 \texttt{a} 占 4 个字节};
+    \node[anchor=west,font=\small,color=black!60] at (3.6,-1.55) {（地址 0x1000 $\sim$ 0x1003）};
+  \end{tikzpicture}
+  \caption{内存按字节编址；一个 \texttt{int} 通常占用连续 4 个字节}
+  \label{fig:memory-address}
+\end{figure}
+
+在 C 语言里：
+
+\begin{codebox}{memory.c —— 变量住在哪里}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 0x12345678;
+
+    printf("a 的值   = %x\n", a);
+    printf("a 的地址 = %p\n", (void *)&a);
+    printf("int 大小 = %d 字节\n", (int)sizeof(int));
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（地址每次运行可能不同）}
+a 的值   = 12345678
+a 的地址 = 000000000061FE1C
+int 大小 = 4 字节
+\end{outbox}
+
+\begin{note}
+这里出现了 \code{&a}，表示“取变量 \code{a} 的地址”；\texttt{\%p} 是打印地址的格式符；\code{(void *)} 是类型转换，现在看不懂没关系，第 8 章会讲。你只需要先记住：\textbf{每个变量都有地址，地址是内存中的门牌号}。
+\end{note}
+
+\begin{tipbox}[地址是“编号”，不是“内容”]
+把地址想成酒店房间号。房间号 301 不是一个房间，它只是“第 301 号房间”的编号。指针里存的就是房间号，而不是房间里的行李。
+\end{tipbox}
+
+\subsection{字节序：多字节数据怎么排}
+
+一个 \code{int} 占 4 个字节。内存是按字节编号的，那么这 4 个字节谁在前、谁在后？
+
+以 \code{0x12345678} 为例，有两种排法：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % 小端
+    \node[anchor=east,font=\small\bfseries] at (-0.4,1.0) {小端序};
+    \foreach \i/\addr/\val in {0/0x1000/78,1/0x1001/56,2/0x1002/34,3/0x1003/12} {
+      \node[font=\ttfamily\scriptsize,color=black!60,above] at (\i*1.8,0.3) {\addr};
+      \node[membox,minimum width=1.5cm] at (\i*1.8,0) {\val};
+    }
+    \node[font=\scriptsize,color=black!60] at (2.7,-0.85) {低字节在低地址};
+
+    % 大端
+    \node[anchor=east,font=\small\bfseries] at (-0.4,-1.6) {大端序};
+    \foreach \i/\addr/\val in {0/0x1000/12,1/0x1001/34,2/0x1002/56,3/0x1003/78} {
+      \node[font=\ttfamily\scriptsize,color=black!60,above] at (\i*1.8,-1.3) {\addr};
+      \node[membox,minimum width=1.5cm] at (\i*1.8,-1.6) {\val};
+    }
+    \node[font=\scriptsize,color=black!60] at (2.7,-2.45) {高字节在低地址};
+  \end{tikzpicture}
+  \caption{同样一个 \texttt{0x12345678}，在两种字节序下的内存排布}
+  \label{fig:endian}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{小端序（little-endian）}：低字节放在低地址。x86、ARM（常见配置）使用小端；
+  \item \textbf{大端序（big-endian）}：高字节放在低地址。网络协议、部分嵌入式芯片使用大端。
+\end{itemize}
+
+\begin{pitfall}[跨平台传二进制数据要小心]
+如果你在小端机器上把 \code{int} 直接写入文件，再拿到大端机器上读，数值会完全乱掉。解决方案是约定统一的字节序（网络字节序用大端），或者逐字节读写。初学阶段知道有这回事即可。
+\end{pitfall}
+
+\subsection{存储层次：为什么内存不够快}
+
+CPU 的运算速度远快于内存的读写速度。为了不让 CPU 干等，硬件设计了一套“存储金字塔”：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % 金字塔（分层梯形）
+    \fill[structurecolor!20] (0,0) -- (8,0) -- (7,1.2) -- (1,1.2) -- cycle;
+    \fill[structurecolor!30] (1,1.4) -- (7,1.4) -- (6,2.6) -- (2,2.6) -- cycle;
+    \fill[structurecolor!40] (2,2.8) -- (6,2.8) -- (5,4.0) -- (3,4.0) -- cycle;
+    \fill[structurecolor!55] (3,4.2) -- (5,4.2) -- (4.4,5.2) -- (3.6,5.2) -- cycle;
+    \fill[structurecolor!70] (3.6,5.4) -- (4.4,5.4) -- (4.15,6.0) -- (3.85,6.0) -- cycle;
+
+    \node[font=\scriptsize] at (4,0.55) {硬盘 / SSD（GB，毫秒级）};
+    \node[font=\scriptsize] at (4,1.95) {内存 RAM（GB，纳秒级）};
+    \node[font=\scriptsize] at (4,3.35) {缓存 Cache（MB，更快的纳秒）};
+    \node[font=\scriptsize] at (4,4.65) {寄存器（几十个，亚纳秒）};
+
+    \draw[ptr] (7.5,0.3) -- (8.3,0.3) -- (8.3,5.7) -- (4.6,5.7);
+    \node[font=\scriptsize,color=ptrline,anchor=west] at (8.4,3.0) {越快};
+    \node[font=\scriptsize,color=ptrline,anchor=west] at (8.4,2.5) {越小};
+    \node[font=\scriptsize,color=ptrline,anchor=west] at (8.4,2.0) {越贵};
+  \end{tikzpicture}
+  \caption{存储层次：越靠近 CPU 越快、越小、越贵}
+  \label{fig:hierarchy}
+\end{figure}
+
+\begin{tipbox}[局部性原理：写代码也能“讨好”缓存]
+CPU 访问内存时，会把相邻的一整块数据一起载入缓存。所以：
+\begin{itemize}
+  \item 按顺序遍历数组，比跳着访问快得多；
+  \item 二维数组按行遍历，通常比按列遍历快（因为 C 的数组按行连续存放）。
+\end{itemize}
+这个道理在排序算法那一章会再次出现。
+\end{tipbox}
+
+\section{程序是怎么跑起来的}
+
+\subsection{从 .c 到 .exe}
+
+你写的 \file{hello.c} 是给人看的文本，CPU 看不懂。中间要经过四个阶段：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[node distance=6mm,>=Stealth,start chain=going right]
+    \node[process,on chain] (src) {\texttt{hello.c}\\源代码};
+    \node[process,on chain] (pp) {预处理\\\texttt{hello.i}};
+    \node[process,on chain] (cc) {编译\\\texttt{hello.s}};
+    \node[process,on chain] (as) {汇编\\\texttt{hello.o}};
+    \node[process,on chain] (ld) {链接\\\texttt{hello.exe}};
+    \draw[flow] (src) -- (pp);
+    \draw[flow] (pp) -- (cc);
+    \draw[flow] (cc) -- (as);
+    \draw[flow] (as) -- (ld);
+  \end{tikzpicture}
+  \caption{从源代码到可执行文件的四个阶段}
+  \label{fig:compile}
+\end{figure}
+
+\begin{enumerate}
+  \item \textbf{预处理}：处理以 \texttt{\#} 开头的行。把 \texttt{\#include <stdio.h>} 替换成头文件的内容；把 \texttt{\#define} 做文本替换；删掉注释。
+  \item \textbf{编译}：把预处理后的 C 代码翻译成汇编代码。这一步会做语法检查、类型检查、优化。
+  \item \textbf{汇编}：把汇编代码翻译成机器指令，生成目标文件 \file{.o}（Windows 上是 \file{.obj}）。
+  \item \textbf{链接}：把你的目标文件和库函数（例如 \code{printf} 的实现）拼在一起，生成最终的可执行文件。
+\end{enumerate}
+
+\begin{tipbox}[报错分两种，要看清]
+\begin{itemize}
+  \item \textbf{编译错误}：语法不对、类型不匹配、变量没声明。这类错误编译器会告诉你行号，按行号改。
+  \item \textbf{链接错误}：函数声明了但没定义，或者库没链接。常见的是 \code{undefined reference to 'xxx'}，通常意味着你忘了包含某个源文件或库。
+\end{itemize}
+\end{tipbox}
+
+\subsection{可执行文件里有什么}
+
+程序运行起来后，操作系统会为它分配一块虚拟内存，大致分成几个区域：
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \fill[structurecolor!10] (0,0) rectangle (7,1.1);
+    \fill[structurecolor!18] (0,1.2) rectangle (7,2.3);
+    \fill[structurecolor!26] (0,2.4) rectangle (7,3.5);
+    \fill[structurecolor!10] (0,3.6) rectangle (7,5.2);
+    \fill[structurecolor!18] (0,5.3) rectangle (7,6.4);
+
+    \node[font=\small\bfseries] at (3.5,0.55) {代码区 text};
+    \node[font=\small\bfseries] at (3.5,1.75) {已初始化数据 data};
+    \node[font=\small\bfseries] at (3.5,2.95) {未初始化数据 bss};
+    \node[font=\small\bfseries] at (3.5,4.4) {堆 heap（向上生长）};
+    \node[font=\small\bfseries] at (3.5,5.85) {栈 stack（向下生长）};
+
+    \node[font=\scriptsize,color=black!60,anchor=west] at (7.2,0.55) {机器指令};
+    \node[font=\scriptsize,color=black!60,anchor=west] at (7.2,1.75) {全局变量、字符串常量};
+    \node[font=\scriptsize,color=black!60,anchor=west] at (7.2,2.95) {未赋初值的全局变量};
+    \node[font=\scriptsize,color=black!60,anchor=west] at (7.2,5.85) {局部变量、函数调用信息};
+
+  \end{tikzpicture}
+  \caption{进程的地址空间：代码、数据、堆、栈各司其职}
+  \label{fig:process-memory}
+\end{figure}
+
+\begin{itemize}
+  \item \textbf{代码区}：存放编译好的机器指令，只读；
+  \item \textbf{数据区}：存放全局变量、静态变量、字符串常量；
+  \item \textbf{堆}：程序运行时动态申请的内存（\code{malloc}），向高地址生长；
+  \item \textbf{栈}：函数调用时存放局部变量、参数、返回地址，向低地址生长。
+\end{itemize}
+
+现在你只需要有个印象。第 6、7、8 章会反复回到这张图：数组和结构体通常在栈上（局部变量），字符串常量在数据区，指针可以指向任何区域。
+
+\subsection{操作系统做了什么}
+
+你的程序并不是“直接”操作硬件的。操作系统（OS）充当了中间人：
+
+\begin{itemize}
+  \item 负责把程序加载到内存，创建进程；
+  \item 分配 CPU 时间片，让多个程序“同时”运行；
+  \item 管理内存，把你的虚拟地址翻译成物理地址；
+  \item 提供文件、网络、输入输出等系统调用；
+  \item 在你越界访问内存时，用“段错误”把你拦住（这其实是好事）。
+\end{itemize}
+
+\begin{deepbox}[拔高：虚拟地址是什么]
+你打印出来的 \texttt{\%p} 地址（例如 \code{000000000061FE1C}）是\textbf{虚拟地址}。每个进程都以为自己独占整个地址空间，实际上操作系统和 CPU 的 MMU（内存管理单元）会把虚拟地址映射到物理内存。这样做的好处是隔离和安全：一个程序崩溃不会影响另一个程序。理解这一点，你就不用担心“我的指针地址为什么每次都变”了。
+\end{deepbox}
+
+\section{C 语言在这张图里的位置}
+
+现在，我们可以把 C 语言的概念和机器模型对应起来了：
+
+\begin{center}
+\begin{tabular}{@{}p{0.26\textwidth}p{0.62\textwidth}@{}}
+\toprule
+C 语言概念 & 机器层面的含义 \\
+\midrule
+类型（\code{int}、\code{double}） & 这块内存有多大、按什么格式解释比特 \\
+变量 & 一块有名字的内存空间，名字在编译后通常消失，变成地址 \\
+赋值 & 把数据写进某个地址开始的内存 \\
+表达式 & 在寄存器里做运算，结果写回内存 \\
+函数 & 一段代码，调用时在栈上分配参数和局部变量 \\
+数组 & 一段连续的内存，用下标计算偏移 \\
+指针 & 一个专门存放地址的变量 \\
+\code{&} 与 \code{*} & 取地址、按地址访问 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}
+写一个程序，打印常见类型在本机占用的字节数。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{sizeof.c —— 看看你的机器}
+#include <stdio.h>
+
+int main(void)
+{
+    printf("char      : %d\n", (int)sizeof(char));
+    printf("short     : %d\n", (int)sizeof(short));
+    printf("int       : %d\n", (int)sizeof(int));
+    printf("long      : %d\n", (int)sizeof(long));
+    printf("float     : %d\n", (int)sizeof(float));
+    printf("double    : %d\n", (int)sizeof(double));
+    printf("pointer   : %d\n", (int)sizeof(void *));
+
+    return 0;
+}
+\end{codebox}
+
+在常见的 64 位 Windows / Linux（GCC）环境下，输出大致是：
+\begin{outbox}{运行结果（典型 64 位环境）}
+char      : 1
+short     : 2
+int       : 4
+long      : 8
+float     : 4
+double    : 8
+pointer   : 8
+\end{outbox}
+
+注意 \code{long} 的大小是平台相关的：在 64 位 Windows 上通常是 4 字节，在 64 位 Linux 上是 8 字节。\textbf{永远不要假设某个类型一定是几字节}，需要精确大小时用 \code{<stdint.h>} 里的 \code{int32_t} 等类型（C99 引入；C89 下可用编译器扩展或自定义）。
+\end{solution}
+
+\begin{note}
+\code{sizeof} 返回的是 \code{size_t} 类型（无符号整数）。这里用 \code{(int)} 强制转换是为了能用 \texttt{\%d} 打印。关于强制类型转换，第 3 章会详细讲。
+\end{note}
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.3\textwidth}p{0.6\textwidth}@{}}
+\toprule
+问题 & 一句话答案 \\
+\midrule
+计算机由什么组成 & 运算器、控制器、存储器、输入、输出，通过总线连接 \\
+CPU 怎么工作 & 取指、译码、执行，PC 指向下一条指令 \\
+数据怎么表示 & 用 0/1 表示；8 位一字节，字节是内存编址单位 \\
+负数怎么存 & 补码：取反加一，减法变加法 \\
+小数怎么存 & IEEE 754 浮点数，有精度误差 \\
+内存是什么 & 一个巨大的、按字节编号的数组 \\
+变量是什么 & 一块有类型、有地址的内存 \\
+程序怎么变成可执行文件 & 预处理、编译、汇编、链接 \\
+C 语言的核心对应 & 类型决定大小与解释方式，指针就是地址 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[下一章预告]
+现在你知道数据住在哪里、长什么样了。下一章我们正式开始写程序：从最基础的“输入—计算—输出”顺序结构开始，把一条条语句变成能解决实际问题的程序。
+\end{tipbox}
+
+\begin{problemset}
+  \item 把下列二进制数转成十进制：\code{1010}、\code{1111 0000}、\code{1000 0001}。
+  \item 把下列十进制数转成 8 位二进制和两位十六进制：13、100、255。
+  \item 求 $-17$ 的 8 位补码，并用“取反加一”验证。
+  \item 已知 8 位补码 \code{1110 1101}，求它表示的十进制数。
+  \item 解释为什么 8 位补码的范围是 $-128 \sim 127$，而不是对称的 $-127 \sim 127$。
+  \item 写一个程序，打印 \code{char}、\code{int}、\code{double}、\code{void *} 在你机器上的字节数。
+  \item 写一个程序，验证 \code{0.1 + 0.2 == 0.3} 的结果，并解释原因。
+  \item 用自己的话解释：什么是地址？什么是字节序？为什么会有大端和小端？
+  \item 画出（或写出）从 \file{hello.c} 到 \file{hello.exe} 的四个阶段，并说明每个阶段做什么。
+  \item 思考题：如果一个 \code{unsigned char} 变量从 255 再加 1，结果是多少？如果是 \code{signed char} 从 127 加 1 呢？两者的区别是什么？
+\end{problemset}

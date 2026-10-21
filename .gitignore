@@ -1,0 +1,23 @@
+﻿# LaTeX build artifacts
+*.aux
+*.log
+*.toc
+*.out
+*.bcf
+*.run.xml
+*.blg
+*.bbl
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+main.listing
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# preview images
+preview/
+preview*/

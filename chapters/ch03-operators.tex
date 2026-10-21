@@ -1,0 +1,1035 @@
+\chapter{写在分支结构之前：运算符}
+
+\begin{introduction}
+  \item 算术、赋值、自增自减：最常见的四类运算
+  \item 关系与逻辑：为“判断”准备的两把尺子
+  \item 位运算：直接操作二进制位
+  \item 优先级、结合性、类型转换与求值顺序
+  \item 副作用与未定义行为：那些“看起来对”的坑
+\end{introduction}
+
+\chaptermotto{「程序 = 数据 + 运算 + 控制。先把运算说清楚，控制才有着落。」}
+
+下一章要学分支，也就是“如果满足某个条件，就做某件事”。条件从哪来？从\textbf{关系运算}和\textbf{逻辑运算}来。所以这一章是分支的“前置技能包”。
+
+除此之外，本章还会把 C 语言里所有常用运算符过一遍。内容看起来多，但核心只有三句话：
+
+\begin{enumerate}
+  \item 每个运算符都有\textbf{优先级}和\textbf{结合性}，不确定就加括号；
+  \item 不同类型混算会发生\textbf{类型转换}，转换规则要心里有数；
+  \item 有些表达式有\textbf{副作用}，求值顺序不对结果就不可预测。
+\end{enumerate}
+
+\section{表达式与运算符总览}
+
+\subsection{什么是运算符}
+
+运算符是告诉编译器“做什么运算”的符号，例如 \code{+}、\code{*}、\code{<}、\texttt{\&\&}。参与运算的数据叫\textbf{操作数}。
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+分类 & 运算符 & 说明 \\
+\midrule
+算术 & \code{+} \code{-} \code{*} \code{/} \texttt{\%} & 加减乘除、取余 \\
+赋值 & \code{=} \code{+=} \code{-=} \code{*=} \code{/=} \texttt{\%=} & 把值写进变量 \\
+自增自减 & \code{++} \code{--} & 加 1 / 减 1 \\
+关系 & \code{>} \code{<} \code{>=} \code{<=} \code{==} \code{!=} & 比较大小、判断相等 \\
+逻辑 & \texttt{\&\&} \code{||} \code{!} & 与、或、非 \\
+位运算 & \texttt{\&} \code{|} \code{^} \code{~} \code{<<} \code{>>} & 按二进制位操作 \\
+条件 & \code{?:} & 三目运算符 \\
+逗号 & \code{,} & 顺序求值 \\
+其他 & \code{sizeof}、强制类型转换 \code{(类型)} & 求大小、转换类型 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{优先级与结合性：先算谁}
+
+一个表达式里出现多个运算符时，先算谁由\textbf{优先级}决定；优先级相同的，由\textbf{结合性}决定（从左往右还是从右往左）。
+
+例如 \code{2 + 3 * 4}，因为 \code{*} 的优先级高于 \code{+}，所以先算 \code{3 * 4}，结果是 14。如果先算加法，结果会是 20。这就是优先级的差别。
+
+\begin{tipbox}[记不住优先级怎么办]
+加括号。括号的优先级最高，而且能让读代码的人一眼看懂你的意图。经验法则是：\textbf{只要混合了三种以上运算符，就加括号}。
+\end{tipbox}
+
+完整的优先级表（从高到低）放在本章后面，先学具体运算符，再回来看表。
+
+\section{算术运算符}
+
+\subsection{加、减、乘、除}
+
+\begin{codebox}{arith.c —— 四则运算}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 7;
+    int b = 2;
+
+    printf("a + b = %d\n", a + b);
+    printf("a - b = %d\n", a - b);
+    printf("a * b = %d\n", a * b);
+    printf("a / b = %d\n", a / b);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a + b = 9
+a - b = 5
+a * b = 14
+a / b = 3
+\end{outbox}
+
+注意 \code{7 / 2} 的结果是 3，不是 3.5。因为两个操作数都是整数，C 执行的是\textbf{整数除法}：只保留商的整数部分，小数部分直接丢弃（不是四舍五入）。
+
+\begin{pitfall}[整数除法向零截断]
+\code{7 / 2} 得 3，\code{-7 / 2} 得 $-3$（向零截断，不是向下取整 $-4$）。如果你需要小数结果，把至少一个操作数变成浮点：\code{7.0 / 2} 得 3.5。
+\end{pitfall}
+
+\subsection{取余运算符 \texttt{\%}}
+
+\texttt{\%} 计算除法后的余数，只能用于整数：
+
+\begin{codebox}{mod.c —— 取余}
+#include <stdio.h>
+
+int main(void)
+{
+    printf("7 %% 2 = %d\n", 7 % 2);
+    printf("8 %% 2 = %d\n", 8 % 2);
+    printf("7 %% 3 = %d\n", 7 % 3);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+7 % 2 = 1
+8 % 2 = 0
+7 % 3 = 1
+\end{outbox}
+
+取余的常见用途：
+
+\begin{itemize}
+  \item \textbf{判断奇偶}：\texttt{n \% 2} 为 0 是偶数，非 0 是奇数；
+  \item \textbf{取某一位数字}：\texttt{n \% 10} 取个位；
+  \item \textbf{循环计数}：让计数器在 $0 \sim N-1$ 之间循环；
+  \item \textbf{时间换算}：\texttt{seconds \% 60} 得到秒数。
+\end{itemize}
+
+\begin{pitfall}[负数取余要小心]
+在多数现代编译器上，\texttt{-7 \% 2} 的结果是 $-1$，不是 1。所以判断奇数不要写 \texttt{n \% 2 == 1}，而要写 \texttt{n \% 2 != 0}，否则负数会被误判为偶数。C89 对负数除法和取余的符号没有强制规定，跨平台代码更要注意。
+\end{pitfall}
+
+\subsection{除零与溢出}
+
+整数除以 0 是\textbf{未定义行为}，程序通常会直接崩溃：
+
+\begin{codebox}{divzero.c —— 除零}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 10;
+    int b = 0;
+
+    printf("%d\n", a / b);   /* 运行时错误 */
+    return 0;
+}
+\end{codebox}
+
+浮点数除以 0 不会崩溃，而是得到“无穷大”或“非数”（NaN），但同样不应该依赖。
+
+整数运算还可能溢出。第 1 章已经讲过，有符号溢出是未定义行为。看一个例子：
+
+\begin{codebox}{int-overflow.c —— 整数运算溢出}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 100000;
+    int b = 100000;
+    int c;
+
+    c = a * b;       /* 10^10 超出了 int 的范围 */
+    printf("c = %d\n", c);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（常见实现，不可依赖）}
+c = 1410065408
+\end{outbox}
+
+\begin{tipbox}[电控中的溢出]
+电机编码器计数、定时器计数、ADC 采样值累加都可能溢出。做乘加运算前，先估算最大值是否会超过类型范围；必要时用 \code{long}、\code{double} 或先做除法。
+\end{tipbox}
+
+\section{赋值运算符}
+
+\subsection{基本赋值}
+
+\code{=} 是赋值，不是“等于”。它把右边的值写进左边的变量：
+
+\begin{codebox}{assign.c —— 赋值}
+#include <stdio.h>
+
+int main(void)
+{
+    int a;
+    int b;
+
+    a = 10;         /* 把 10 写进 a */
+    b = a;          /* 把 a 的值复制给 b */
+    a = 20;         /* 再改 a，b 不受影响 */
+
+    printf("a = %d, b = %d\n", a, b);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a = 20, b = 10
+\end{outbox}
+
+赋值表达式的值就是被赋的值，所以可以连续赋值：
+
+\begin{codebox}{chain.c —— 连续赋值}
+#include <stdio.h>
+
+int main(void)
+{
+    int a, b, c;
+
+    a = b = c = 5;      /* 从右往左：c=5，b=5，a=5 */
+    printf("a=%d b=%d c=%d\n", a, b, c);
+    return 0;
+}
+\end{codebox}
+
+\subsection{复合赋值}
+
+\code{a += b} 等价于 \code{a = a + b}。常见的复合赋值有：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+写法 & 等价于 \\
+\midrule
+\code{a += b} & \code{a = a + b} \\
+\code{a -= b} & \code{a = a - b} \\
+\code{a *= b} & \code{a = a * b} \\
+\code{a /= b} & \code{a = a / b} \\
+\texttt{a \%= b} & \texttt{a = a \% b} \\
+\code{a <<= 2} & \code{a = a << 2} \\
+\texttt{a \&= mask} & \texttt{a = a \& mask} \\
+\code{a |= flag} & \code{a = a | flag} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+复合赋值的好处是简洁，而且左边只求值一次（对指针和数组下标有意义，后面会讲）。但不要为了简洁牺牲可读性。
+
+\begin{pitfall}[\texttt{a += b * c} 不是 \texttt{(a + b) * c}]
+\code{a += b * c} 等价于 \code{a = a + (b * c)}，因为 \code{*} 的优先级高于 \code{+=}。复合赋值运算符的优先级很低，仅高于逗号。
+\end{pitfall}
+
+\section{自增与自减}
+
+\code{++} 让变量加 1，\code{--} 让变量减 1。它们有两种写法：
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+写法 & 名称 & 含义 \\
+\midrule
+\code{++a} & 前置 & 先把 \code{a} 加 1，再使用 \code{a} 的新值 \\
+\code{a++} & 后置 & 先使用 \code{a} 的旧值，再把 \code{a} 加 1 \\
+\code{--a} & 前置 & 先减 1，再使用 \\
+\code{a--} & 后置 & 先使用，再减 1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{codebox}{inc.c —— 前置与后置}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 5;
+    int b;
+
+    b = ++a;        /* a 先变 6，再把 6 赋给 b */
+    printf("a=%d b=%d\n", a, b);
+
+    a = 5;
+    b = a++;        /* 先把 5 赋给 b，a 再变 6 */
+    printf("a=%d b=%d\n", a, b);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a=6 b=6
+a=6 b=5
+\end{outbox}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
+    \node[process,minimum width=34mm] (pre) at (0,0) {\texttt{++a}};
+    \node[process,minimum width=34mm] (post) at (6,0) {\texttt{a++}};
+    \node[box,minimum width=34mm,below=8mm of pre] (pre2) {先加 1};
+    \node[box,minimum width=34mm,below=8mm of post] (post2) {先取值};
+    \node[box,minimum width=34mm,below=6mm of pre2] (pre3) {再取值使用};
+    \node[box,minimum width=34mm,below=6mm of post2] (post3) {再加 1};
+    \draw[flow] (pre) -- (pre2);
+    \draw[flow] (pre2) -- (pre3);
+    \draw[flow] (post) -- (post2);
+    \draw[flow] (post2) -- (post3);
+  \end{tikzpicture}
+  \caption{前置 \texttt{++} 与后置 \texttt{++} 的执行顺序}
+  \label{fig:inc}
+\end{figure}
+
+单独使用 \code{a++;} 时，前置和后置效果一样，都是让 \code{a} 加 1。区别只在“参与其他运算”时体现。
+
+\begin{pitfall}[不要在同一个表达式里对同一变量多次自增]
+\code{i = i++;}、\code{a = i++ + ++i;} 这类写法在 C 标准里属于\textbf{未定义行为}，不同编译器可能给出不同结果。原因是 C 没有规定“先算左边还是先算右边”。记住：\textbf{一个变量在一个表达式里最多被修改一次}。
+\end{pitfall}
+
+\begin{deepbox}[拔高：为什么 \texttt{i = i++} 是未定义的]
+\code{i++} 包含两个动作：读取 \code{i} 的旧值、把 \code{i} 加 1 写回。\code{i = ...} 又要把结果写回 \code{i}。两次写入之间没有“顺序点”（sequence point），标准无法规定谁先谁后，于是干脆规定这是未定义行为。现代编译器打开优化后，结果可能和你想的完全不同。
+\end{deepbox}
+
+\section{关系运算符}
+
+关系运算符用来比较两个值，结果只有两种：\textbf{真（1）}或\textbf{假（0）}。
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+运算符 & 含义 & 例子（\code{a=3, b=5}） \\
+\midrule
+\code{>} & 大于 & \code{a > b} 为 0 \\
+\code{<} & 小于 & \code{a < b} 为 1 \\
+\code{>=} & 大于等于 & \code{a >= 3} 为 1 \\
+\code{<=} & 小于等于 & \code{a <= 2} 为 0 \\
+\code{==} & 等于 & \code{a == 3} 为 1 \\
+\code{!=} & 不等于 & \code{a != b} 为 1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{codebox}{relational.c —— 关系运算的结果}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 3;
+    int b = 5;
+
+    printf("a < b  = %d\n", a < b);
+    printf("a > b  = %d\n", a > b);
+    printf("a == b = %d\n", a == b);
+    printf("a != b = %d\n", a != b);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a < b  = 1
+a > b  = 0
+a == b = 0
+a != b = 1
+\end{outbox}
+
+\begin{pitfall}[\texttt{=} 和 \texttt{==} 是两回事]
+\code{if (a = 5)} 是赋值，把 5 写进 \code{a}，然后判断 5 是否为真（永远为真）；\code{if (a == 5)} 才是比较。这个错误编译器通常只会给警告，一定要看清。
+\end{pitfall}
+
+\begin{pitfall}[不要连写比较]
+数学里可以写 $3 < x < 10$，C 语言里 \code{3 < x < 10} 的含义完全不同：先算 \code{3 < x} 得到 0 或 1，再拿这个 0/1 和 10 比较，结果永远为真。正确写法是 \texttt{3 < x \&\& x < 10}。
+\end{pitfall}
+
+\section{逻辑运算符}
+
+逻辑运算符把多个条件组合起来：
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+运算符 & 名称 & 含义 \\
+\midrule
+\texttt{\&\&} & 逻辑与 & 两个都为真，结果才为真 \\
+\code{||} & 逻辑或 & 有一个为真，结果就为真 \\
+\code{!} & 逻辑非 & 真变假，假变真 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+真值表：
+
+\begin{center}
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+\code{a} & \code{b} & \texttt{a \&\& b} & \code{a || b} & \code{!a} \\
+\midrule
+0 & 0 & 0 & 0 & 1 \\
+0 & 非 0 & 0 & 1 & 1 \\
+非 0 & 0 & 0 & 1 & 0 \\
+非 0 & 非 0 & 1 & 1 & 0 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+在 C 语言里，\textbf{0 为假，非 0 为真}。任何非零值（包括负数、浮点数）都算真。
+
+\subsection{短路求值}
+
+\texttt{\&\&} 和 \code{||} 有一个非常重要的特性：\textbf{短路}。
+
+\begin{itemize}
+  \item \texttt{a \&\& b}：如果 \code{a} 为假，就不再计算 \code{b}，直接得 0；
+  \item \code{a || b}：如果 \code{a} 为真，就不再计算 \code{b}，直接得 1。
+\end{itemize}
+
+这个特性有两个用途：一是提高效率，二是\textbf{避免危险操作}。
+
+\begin{codebox}{short-circuit.c —— 短路求值避免除零}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 10;
+    int b = 0;
+
+    if (b != 0 && a / b > 2) {
+        printf("商大于 2\n");
+    } else {
+        printf("不满足条件\n");
+    }
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+不满足条件
+\end{outbox}
+
+因为 \code{b != 0} 为假，\texttt{\&\&} 后面的 \code{a / b} 根本不会被计算，所以不会除零崩溃。如果写成 \texttt{a / b > 2 \&\& b != 0}，就会先除零，程序崩溃。
+
+\begin{pitfall}[短路只保证“不被求值”，不保证“顺序好”]
+虽然 \texttt{\&\&} 和 \code{||} 保证从左到右求值，但其余运算符（如 \code{+}、\code{*}、函数参数）的求值顺序是未指定的。不要把有副作用的表达式塞进复杂表达式里。
+\end{pitfall}
+
+\subsection{德·摩根定律}
+
+逻辑表达式可以互相转换：
+
+\[
+!(a \&\& b) \equiv (!a) || (!b), \qquad
+!(a || b) \equiv (!a) \&\& (!b).
+\]
+
+例如“不是（年龄大于 18 且身高大于 170）”等价于“年龄不大于 18 或身高不大于 170”。化简逻辑表达式时很有用。
+
+\section{位运算符}
+
+位运算符直接操作整数的二进制位。它在电控里非常常用：寄存器配置、标志位、掩码、协议解析，都离不开它。
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+运算符 & 名称 & 作用 \\
+\midrule
+\texttt{\&} & 按位与 & 两位都为 1，结果才为 1 \\
+\code{|} & 按位或 & 有一位为 1，结果就为 1 \\
+\code{^} & 按位异或 & 两位不同，结果为 1 \\
+\code{~} & 按位取反 & 0 变 1，1 变 0 \\
+\code{<<} & 左移 & 整体左移，右边补 0 \\
+\code{>>} & 右移 & 整体右移 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{按位与、或、异或、取反}
+
+以 8 位为例：
+
+\begin{center}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+运算 & 例子 & 结果 & 说明 \\
+\midrule
+\texttt{\&} & \texttt{1010 1100 \& 0000 1111} & \code{0000 1100} & 取低 4 位 \\
+\code{|} & \code{1010 0000 | 0000 1111} & \code{1010 1111} & 置低 4 位为 1 \\
+\code{^} & \code{1010 1100 ^ 1111 0000} & \code{0101 1100} & 翻转高 4 位 \\
+\code{~} & \code{~1010 1100} & \code{0101 0011} & 按位取反 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{移位}
+
+\code{x << n} 把 \code{x} 的二进制位整体左移 \code{n} 位，右边补 0；\code{x >> n} 右移。
+
+\begin{codebox}{shift.c —— 移位}
+#include <stdio.h>
+
+int main(void)
+{
+    unsigned int x = 1;
+
+    printf("1 << 0 = %u\n", x << 0);
+    printf("1 << 1 = %u\n", x << 1);
+    printf("1 << 4 = %u\n", x << 4);
+    printf("1 << 8 = %u\n", x << 8);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+1 << 0 = 1
+1 << 1 = 2
+1 << 4 = 16
+1 << 8 = 256
+\end{outbox}
+
+左移 $n$ 位相当于乘以 $2^n$，右移 $n$ 位相当于除以 $2^n$（对无符号数）。但\textbf{不要用移位代替乘除来“优化”}，现代编译器比你聪明，而且移位遇到负数或溢出时会出问题。
+
+\begin{pitfall}[移位位数不能超过类型宽度]
+对 32 位 \code{int} 左移 32 位是未定义行为。移位位数必须小于类型宽度。另外，有符号数右移时高位补 0 还是补 1 由实现决定（算术右移通常补符号位），所以位操作用 \code{unsigned} 类型最安全。
+\end{pitfall}
+
+\subsection{位操作的经典用法}
+
+位操作最常用的四个动作是：\textbf{判断某位、置位、清位、取反某位}。
+
+\begin{codebox}{bits.c —— 位操作的四个动作}
+#include <stdio.h>
+
+int main(void)
+{
+    unsigned int flags = 0;
+
+    /* 置位：把第 3 位置 1 */
+    flags = flags | (1u << 3);
+    printf("置位后：%u\n", flags);
+
+    /* 判断：第 3 位是否为 1 */
+    if (flags & (1u << 3)) {
+        printf("第 3 位是 1\n");
+    }
+
+    /* 清位：把第 3 位置 0 */
+    flags = flags & ~(1u << 3);
+    printf("清位后：%u\n", flags);
+
+    /* 翻转：把第 0 位取反 */
+    flags = flags ^ (1u << 0);
+    printf("翻转后：%u\n", flags);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+置位后：8
+第 3 位是 1
+清位后：0
+翻转后：1
+\end{outbox}
+
+\begin{tipbox}[记住这四个式子]
+\begin{itemize}
+  \item 置位：\code{flags |= (1u << n);}
+  \item 清位：\texttt{flags \&= \textasciitilde{}(1u << n);}
+  \item 判断：\texttt{if (flags \& (1u << n))}
+  \item 翻转：\code{flags ^= (1u << n);}
+\end{itemize}
+其中 \code{1u} 表示无符号的 1，避免有符号移位的坑。
+\end{tipbox}
+
+\begin{deepbox}[拔高：寄存器配置就是这么干的]
+假设某个 32 位寄存器里，第 0\textasciitilde3 位控制电机使能，第 4\textasciitilde7 位控制方向，第 8\textasciitilde15 位是速度。你可能会写：
+\begin{codebox}{register.c —— 寄存器位域操作（示意）}
+unsigned int reg = 0;
+
+reg |= (1u << 0);                 /* 使能 */
+reg = (reg & ~(0xFu << 4)) | (3u << 4);   /* 方向设为 3 */
+reg = (reg & ~(0xFFu << 8)) | (200u << 8);/* 速度设为 200 */
+\end{codebox}
+这段代码不需要访问真实硬件，但思想是通用的：先清掉要改的位，再用“或”写入新值。直接赋值 \code{reg = 3 << 4} 会把其他位清零，是初学者常犯的错误。
+\end{deepbox}
+
+\section{条件运算符}
+
+\code{?:} 是 C 语言里唯一的三目运算符，形式是：
+
+\begin{center}
+\code{条件 ? 表达式1 : 表达式2}
+\end{center}
+
+条件为真时取表达式 1 的值，否则取表达式 2 的值。
+
+\begin{codebox}{ternary.c —— 条件运算符}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 7;
+    int b = 3;
+    int max;
+
+    max = (a > b) ? a : b;
+    printf("较大的数是 %d\n", max);
+
+    printf("a 是%s\n", (a % 2 == 0) ? "偶数" : "奇数");
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+较大的数是 7
+a 是奇数
+\end{outbox}
+
+条件运算符适合“二选一”的简单场景。如果逻辑复杂，还是用 \code{if-else} 更清楚。
+
+\begin{pitfall}[条件运算符的优先级很低]
+\code{a > b ? a : b + 1} 会被解析成 \code{a > b ? a : (b + 1)}，而不是 \code{(a > b ? a : b) + 1}。不确定就加括号。
+\end{pitfall}
+
+\section{逗号、\texttt{sizeof} 与强制类型转换}
+
+\subsection{逗号运算符}
+
+逗号表达式依次计算每个子表达式，整个表达式的值是\textbf{最后一个子表达式的值}：
+
+\begin{codebox}{comma.c —— 逗号运算符}
+#include <stdio.h>
+
+int main(void)
+{
+    int a;
+    int b;
+
+    a = (1, 2, 3);      /* 依次计算 1、2、3，a 得 3 */
+    b = (a++, a + 10);  /* 先 a 加 1，再算 a+10 */
+
+    printf("a = %d, b = %d\n", a, b);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a = 4, b = 14
+\end{outbox}
+
+逗号运算符主要用于 \code{for} 循环的初始化和更新部分（第 5 章会看到），平时不要滥用。
+
+\subsection{\texttt{sizeof}}
+
+\code{sizeof} 不是函数，是运算符。它返回某个类型或变量占用的字节数，结果类型是 \code{size_t}（无符号整数）。
+
+\begin{codebox}{sizeof2.c —— sizeof 的用法}
+#include <stdio.h>
+
+int main(void)
+{
+    int a;
+    double b;
+    int arr[10];
+
+    printf("sizeof(int)    = %d\n", (int)sizeof(int));
+    printf("sizeof(a)      = %d\n", (int)sizeof(a));
+    printf("sizeof(double) = %d\n", (int)sizeof(double));
+    printf("sizeof(b)      = %d\n", (int)sizeof(b));
+    printf("sizeof(arr)    = %d\n", (int)sizeof(arr));
+    printf("数组元素个数   = %d\n", (int)(sizeof(arr) / sizeof(arr[0])));
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（典型 32 位 int 环境）}
+sizeof(int)    = 4
+sizeof(a)      = 4
+sizeof(double) = 8
+sizeof(b)      = 8
+sizeof(arr)    = 40
+数组元素个数   = 10
+\end{outbox}
+
+\code{sizeof(arr) / sizeof(arr[0])} 是求数组元素个数的经典写法，第 6 章会详细讲。
+
+\subsection{强制类型转换}
+
+强制类型转换的语法是 \code{(类型)表达式}：
+
+\begin{codebox}{cast.c —— 强制类型转换}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 7;
+    int b = 2;
+    double c;
+
+    c = a / b;              /* 整数除法，得 3，再转 double */
+    printf("c = %f\n", c);
+
+    c = (double)a / b;      /* 先把 a 转成 double，再除 */
+    printf("c = %f\n", c);
+
+    printf("(int)3.99 = %d\n", (int)3.99);  /* 截断小数部分 */
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+c = 3.000000
+c = 3.500000
+(int)3.99 = 3
+\end{outbox}
+
+\begin{pitfall}[强制转换可能丢失精度]
+\code{(int)3.99} 得 3，不是 4；\code{(char)300} 会溢出，结果由实现决定。强制转换是“我确定要这样”，不是“帮我修好”。
+\end{pitfall}
+
+\section{优先级与结合性总表}
+
+下面这张表从高到低排列。同一行的运算符优先级相同。
+
+\begin{center}
+\small
+\begin{tabular}{@{}clll@{}}
+\toprule
+优先级 & 运算符 & 含义 & 结合性 \\
+\midrule
+1 & \code{()} \code{[]} \code{->} \code{.} & 函数调用、下标、成员 & 左 \\
+2 & \code{!} \code{~} \code{++} \code{--} \code{+} \code{-} \code{*} \texttt{\&} \code{(类型)} \code{sizeof} & 单目运算 & 右 \\
+3 & \code{*} \code{/} \texttt{\%} & 乘除、取余 & 左 \\
+4 & \code{+} \code{-} & 加减 & 左 \\
+5 & \code{<<} \code{>>} & 移位 & 左 \\
+6 & \code{<} \code{<=} \code{>} \code{>=} & 关系 & 左 \\
+7 & \code{==} \code{!=} & 相等/不等 & 左 \\
+8 & \texttt{\&} & 按位与 & 左 \\
+9 & \code{^} & 按位异或 & 左 \\
+10 & \code{|} & 按位或 & 左 \\
+11 & \texttt{\&\&} & 逻辑与 & 左 \\
+12 & \code{||} & 逻辑或 & 左 \\
+13 & \code{?:} & 条件 & 右 \\
+14 & \code{=} \code{+=} \code{-=} \code{*=} \code{/=} \texttt{\%=} \code{<<=} \code{>>=} \texttt{\&=} \code{^=} \code{|=} & 赋值 & 右 \\
+15 & \code{,} & 逗号 & 左 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{example}
+分析表达式 \texttt{a + b * c > d \&\& e} 的求值顺序。
+\end{example}
+\begin{solution}
+按优先级从高到低：
+
+\begin{enumerate}
+  \item \code{b * c}（乘法优先级 3）；
+  \item \code{a + (b * c)}（加法优先级 4）；
+  \item \code{(a + b * c) > d}（关系优先级 6，结果是 0 或 1）；
+  \item \texttt{((a + b * c) > d) \&\& e}（逻辑与优先级 11）。
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,level distance=9mm,
+  level 1/.style={sibling distance=32mm},
+  level 2/.style={sibling distance=18mm},
+  level 3/.style={sibling distance=12mm}]
+  \node[box,minimum width=8mm] {\texttt{\&\&}}
+    child {node[box,minimum width=8mm] {\code{>}}
+      child {node[box,minimum width=8mm] {\code{+}}
+        child {node[box,minimum width=8mm] {\code{a}}}
+        child {node[box,minimum width=8mm] {\code{*}}
+          child {node[box,minimum width=8mm] {\code{b}}}
+          child {node[box,minimum width=8mm] {\code{c}}}}}
+      child {node[box,minimum width=8mm] {\code{d}}}}
+    child {node[box,minimum width=8mm] {\code{e}}};
+\end{tikzpicture}
+\end{center}
+\end{solution}
+
+\section{类型转换}
+
+不同类型的数据一起运算时，C 会自动做类型转换。规则可以概括为“向精度更高、范围更大的类型看齐”。
+
+\subsection{整型提升}
+
+\code{char}、\code{short} 在参与运算前，会先被提升为 \code{int}：
+
+\begin{codebox}{promote.c —— 整型提升}
+#include <stdio.h>
+
+int main(void)
+{
+    char a = 100;
+    char b = 100;
+    int c;
+
+    c = a + b;      /* a、b 先提升为 int，再相加，不会溢出 */
+    printf("c = %d\n", c);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+c = 200
+\end{outbox}
+
+如果直接用一个 \code{char} 存 200，会溢出（\code{char} 范围通常是 $-128 \sim 127$）。这里因为先提升成 \code{int} 再相加，所以结果正确。
+
+\subsection{通常算术转换}
+
+当 \code{int} 和 \code{double} 运算时，\code{int} 会被转成 \code{double}；当 \code{int} 和 \code{unsigned int} 运算时，\code{int} 会被转成 \code{unsigned int}。后者是很多隐蔽 bug 的来源：
+
+\begin{codebox}{unsigned-trap.c —— 有符号与无符号混算}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = -1;
+    unsigned int b = 1;
+
+    if (a < b) {
+        printf("a < b\n");
+    } else {
+        printf("a >= b\n");
+    }
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（常见实现）}
+a >= b
+\end{outbox}
+
+为什么？因为 \code{a} 被转换成了 \code{unsigned int}，$-1$ 变成 4294967295，当然大于 1。这类问题在比较 \code{sizeof} 的结果时特别常见：
+
+\begin{codebox}{sizeof-trap.c —— sizeof 比较陷阱}
+#include <stdio.h>
+
+int main(void)
+{
+    int i;
+
+    for (i = 10; i >= 0; i--) {
+        if (i < sizeof(int)) {     /* i 被转成无符号，比较结果可能反了 */
+            printf("%d\n", i);
+        }
+    }
+    return 0;
+}
+\end{codebox}
+
+\begin{tipbox}[避免有符号/无符号混算]
+尽量让参与比较的两个变量类型一致；如果必须混用，先显式转换，或者把 \code{sizeof} 的结果强制转成 \code{int}。
+\end{tipbox}
+
+\section{求值顺序与副作用}
+
+\subsection{什么是副作用}
+
+表达式除了产生值，还可能修改环境，这叫\textbf{副作用}。赋值、自增自减、函数调用都可能有副作用。
+
+C 标准只规定了少数几个“顺序点”（sequence point），在顺序点之前的所有副作用必须完成。顺序点包括：
+
+\begin{itemize}
+  \item 每条完整语句结束的分号；
+  \item \texttt{\&\&}、\code{||}、\code{?:}、逗号运算符的求值处；
+  \item 函数调用前（参数求值完成后）。
+\end{itemize}
+
+\begin{pitfall}[函数参数的求值顺序不确定]
+\texttt{printf("\%d \%d", i++, i++);} 的结果在不同编译器上可能不同。不要写这种代码。同理，\code{f(i++, i)} 也不可预测。
+\end{pitfall}
+
+\subsection{一个经典例子}
+
+\begin{codebox}{sequence.c —— 未定义行为示例}
+#include <stdio.h>
+
+int main(void)
+{
+    int i = 1;
+    int a;
+
+    a = i++ + i++;      /* 未定义行为！不要这样写 */
+    printf("a = %d, i = %d\n", a, i);
+    return 0;
+}
+\end{codebox}
+
+这段代码在不同编译器、不同优化级别下可能输出不同结果。正确的写法是拆成多条语句：
+
+\begin{codebox}{sequence-ok.c —— 拆开写}
+#include <stdio.h>
+
+int main(void)
+{
+    int i = 1;
+    int a;
+
+    a = i;
+    i++;
+    a = a + i;
+    i++;
+    printf("a = %d, i = %d\n", a, i);
+    return 0;
+}
+\end{codebox}
+
+\begin{tipbox}[一条语句只做一件事]
+这不是语法要求，而是可靠性要求。一条语句里修改多个变量、或者对同一变量多次修改，都会让代码难以理解和调试。
+\end{tipbox}
+
+\section{综合例题}
+
+\begin{example}
+不用 \code{if}，用表达式判断一个整数 \code{n} 是否为偶数。
+\end{example}
+\begin{solution}
+\texttt{n \% 2 == 0}。结果为 1 表示偶数，0 表示奇数。注意负数的情况，用 \code{== 0} 判断比 \code{== 1} 安全。
+\end{solution}
+
+\begin{example}
+用位运算判断整数 \code{n} 的第 5 位是否为 1。
+\end{example}
+\begin{solution}
+\texttt{(n >> 5) \& 1} 或 \texttt{n \& (1 << 5)}。前者得到 0 或 1，后者得到 0 或 32（非零即真）。
+\end{solution}
+
+\begin{example}
+把秒数 \code{total} 转换成“时:分:秒”的形式。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{time.c —— 秒数转换}
+#include <stdio.h>
+
+int main(void)
+{
+    int total = 3725;
+    int h, m, s;
+
+    h = total / 3600;
+    m = total % 3600 / 60;
+    s = total % 60;
+
+    printf("%d:%02d:%02d\n", h, m, s);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+1:02:05
+\end{outbox}
+
+\texttt{total \% 3600} 先去掉整小时，再除以 60 得到分钟；\texttt{total \% 60} 直接得到秒。
+\end{solution}
+
+\begin{example}
+用异或运算交换两个整数（不使用临时变量）。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{xor-swap.c —— 异或交换}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 3;
+    int b = 5;
+
+    a = a ^ b;
+    b = a ^ b;      /* 此时 b 变成原来的 a */
+    a = a ^ b;      /* 此时 a 变成原来的 b */
+
+    printf("a = %d, b = %d\n", a, b);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a = 5, b = 3
+\end{outbox}
+
+\begin{pitfall}[异或交换只适合炫技]
+这个技巧在面试题里很常见，但实际工程中不推荐：可读性差，而且如果 \code{a} 和 \code{b} 是同一个变量，会把值清零。老老实实用临时变量。
+\end{pitfall}
+\end{solution}
+
+\begin{example}
+写出判断闰年的逻辑表达式（先不考虑 \code{if} 的写法）。
+\end{example}
+\begin{solution}
+闰年的规则是：能被 4 整除但不能被 100 整除，或者能被 400 整除。表达式为：
+
+\begin{center}
+\texttt{(year \% 4 == 0 \&\& year \% 100 != 0) || (year \% 400 == 0)}
+\end{center}
+
+下一章我们就用这个表达式写完整的判断程序。
+\end{solution}
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.24\textwidth}p{0.66\textwidth}@{}}
+\toprule
+主题 & 要点 \\
+\midrule
+算术 & 整数除法会截断；\texttt{\%} 只能用于整数；除零危险；溢出危险 \\
+赋值 & \code{=} 是赋值，\code{==} 是比较；复合赋值优先级低 \\
+自增自减 & 前置先加后用，后置先用后加；同一表达式不要多次修改同一变量 \\
+关系 & 结果是 0 或 1；不要连写比较；浮点不要直接用 \code{==} \\
+逻辑 & 非 0 即真；\texttt{\&\&}、\code{||} 短路；德·摩根定律 \\
+位运算 & 与、或、异或、取反、移位；用 \code{unsigned} 更安全 \\
+条件运算符 & 二选一的简写；优先级低，注意括号 \\
+类型转换 & 整型提升、有符号/无符号混算的坑 \\
+求值顺序 & 只有顺序点保证顺序；避免副作用叠加 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[下一章预告]
+有了关系运算和逻辑运算，我们就可以写“如果……就……”了。下一章学习 \code{if}、\code{if-else}、\code{else if} 和 \code{switch}，让程序学会“明辨是非”。
+\end{tipbox}
+
+\begin{problemset}
+  \item 计算 \code{7 / 2}、\texttt{7 \% 2}、\code{-7 / 2}、\texttt{-7 \% 2} 的值，并解释。
+  \item 写出判断整数 \code{n} 是奇数的表达式（要求对负数也正确）。
+  \item 写出判断整数 \code{n} 能被 3 整除但不能被 5 整除的表达式。
+  \item 用位运算实现：判断 \code{n} 的第 0 位是否为 1；把第 2 位置 1；把第 3 位清零。
+  \item 分析表达式 \code{a = b = c + 1} 的求值顺序。
+  \item 下面代码有什么问题？
+\begin{codebox}{q6.c —— 找问题}
+#include <stdio.h>
+
+int main(void)
+{
+    int i = 0;
+    int a;
+    a = i++ + ++i;
+    printf("%d %d\n", a, i);
+    return 0;
+}
+\end{codebox}
+  \item 写一个表达式，判断字符 \code{c} 是不是小写字母。
+  \item 解释为什么 \code{-1 < 1U} 的结果是假。
+  \item 用条件运算符求三个整数中的最大值。
+  \item 思考题：为什么 \code{x << 2} 不一定等于 \code{x * 4}？举一个反例。
+\end{problemset}

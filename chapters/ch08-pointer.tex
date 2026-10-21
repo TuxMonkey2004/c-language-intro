@@ -1,0 +1,812 @@
+\chapter{指针：会者不难}
+
+\begin{introduction}
+  \item 地址、指针、取地址与解引用
+  \item 指针与变量、数组、结构体的关系
+  \item 指针作为函数参数：让函数修改调用者的数据
+  \item 指针运算与数组遍历
+  \item 动态内存：\texttt{malloc} 与 \texttt{free}
+  \item 二级指针、函数指针与常见陷阱
+\end{introduction}
+
+\chaptermotto{「指针不是魔法，它只是“存地址的变量”。」}
+
+很多同学一听到“指针”就紧张。其实指针的概念非常朴素：\textbf{一个变量，里面存的是另一个变量的地址}。你已经在第 1 章见过地址，在第 2 章用 \code{scanf} 时用过 \texttt{\&}，在第 6 章知道数组元素连续存放。指针只是把这些知识串起来。
+
+这一章会慢一点讲：先把“地址—指针—解引用”这三件事用图讲清楚，再谈指针和数组、函数、结构体的配合，最后讲动态内存和常见陷阱。请务必亲手画几遍内存图。
+
+\section{地址与指针}
+
+\subsection{变量住在哪里}
+
+第 1 章说过：每个变量都占一块内存，每块内存有地址。例如：
+
+\begin{codebox}{address.c —— 打印变量的地址}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 42;
+
+    printf("a 的值   = %d\n", a);
+    printf("a 的地址 = %p\n", (void *)&a);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（地址每次可能不同）}
+a 的值   = 42
+a 的地址 = 000000000061FE1C
+\end{outbox}
+
+\texttt{\&a} 表示“取 \code{a} 的地址”。你可以把地址理解成酒店房间号：房间号不是房间本身，但拿着房间号就能找到房间。
+
+\subsection{指针变量}
+
+\textbf{指针}就是一个专门用来存地址的变量。定义方式：
+
+\begin{center}
+\fbox{\parbox{0.6\textwidth}{
+\ttfamily 类型 *指针名;
+}}
+\end{center}
+
+例如 \code{int *p;} 表示“\code{p} 是一个指针，它指向一个 \code{int} 类型的数据”。
+
+\begin{codebox}{pointer-basic.c —— 指针的基本用法}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 42;
+    int *p;         /* p 是指向 int 的指针 */
+
+    p = &a;         /* 把 a 的地址存进 p */
+
+    printf("a 的地址 = %p\n", (void *)&a);
+    printf("p 的值   = %p\n", (void *)p);
+    printf("p 指向的值 = %d\n", *p);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（地址每次可能不同）}
+a 的地址 = 000000000061FE1C
+p 的值   = 000000000061FE1C
+p 指向的值 = 42
+\end{outbox}
+
+这里出现了两个新符号：
+
+\begin{itemize}
+  \item \texttt{\&}：取地址。\texttt{\&a} 得到 \code{a} 的地址；
+  \item \code{*}：解引用（间接访问）。\code{*p} 表示“\code{p} 指向的那个变量”。
+\end{itemize}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
+    % a
+    \node[draw=memline,fill=memfill,minimum width=2.2cm,minimum height=1.2cm,align=center] (a) at (0,0) {\texttt{a}\\42};
+    \node[font=\scriptsize,color=black!55,above=1mm of a] {地址 0x1000};
+    % p
+    \node[draw=ptrline,fill=ptrfill,minimum width=2.2cm,minimum height=1.2cm,align=center] (p) at (5.2,0) {\texttt{p}\\0x1000};
+    \node[font=\scriptsize,color=black!55,above=1mm of p] {地址 0x2000};
+    \draw[ptr,line width=1pt] (p.west) -- node[lbl,above]{存的是 a 的地址} (a.east);
+    \node[font=\small,color=ptrline,below=4mm of a] {变量 a};
+    \node[font=\small,color=ptrline,below=4mm of p] {指针 p};
+  \end{tikzpicture}
+  \caption{指针 \texttt{p} 里存的是变量 \texttt{a} 的地址；通过 \texttt{*p} 可以访问 \texttt{a}}
+  \label{fig:pointer-basic}
+\end{figure}
+
+\begin{tipbox}[一句话记住]
+\code{p} 是地址，\code{*p} 是地址里的东西。就像 \code{p} 是房间号，\code{*p} 是房间里的行李。
+\end{tipbox}
+
+\subsection{通过指针修改变量}
+
+有了指针，就可以“隔着地址”修改原变量：
+
+\begin{codebox}{pointer-modify.c —— 通过指针修改}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 42;
+    int *p = &a;
+
+    *p = 100;       /* 等价于 a = 100 */
+    printf("a = %d\n", a);
+    printf("*p = %d\n", *p);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a = 100
+*p = 100
+\end{outbox}
+
+这看起来多此一举，但它是很多高级技巧的基础：函数可以通过指针修改调用者的变量，数据结构可以用指针连接起来。
+
+\subsection{空指针与野指针}
+
+\begin{itemize}
+  \item \textbf{空指针}：不指向任何有效地址，用 \code{NULL} 表示；
+  \item \textbf{野指针}：指向一个不确定/已失效地址的指针，极其危险。
+\end{itemize}
+
+\begin{codebox}{null-pointer.c —— 空指针}
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int *p = NULL;
+
+    if (p != NULL) {
+        printf("%d\n", *p);
+    } else {
+        printf("p 是空指针，不能解引用\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{pitfall}[野指针]
+\begin{codebox}{wild-pointer.c —— 野指针}
+int *p;         /* 未初始化，p 里是垃圾值 */
+*p = 10;        /* 往一个随机地址写数据：崩溃或更糟 */
+\end{codebox}
+指针在使用前必须初始化：要么指向一个有效变量，要么赋值为 \code{NULL}。
+\end{pitfall}
+
+\section{指针与函数}
+
+\subsection{让函数修改调用者的变量}
+
+C 语言的函数参数是“按值传递”的：函数拿到的是实参的副本。所以下面这个交换函数是\textbf{错的}：
+
+\begin{codebox}{swap-wrong.c —— 交换失败}
+#include <stdio.h>
+
+void swap(int x, int y)
+{
+    int t;
+    t = x;
+    x = y;
+    y = t;
+}
+
+int main(void)
+{
+    int a = 3;
+    int b = 5;
+
+    swap(a, b);
+    printf("a = %d, b = %d\n", a, b);   /* 还是 3 和 5 */
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a = 3, b = 5
+\end{outbox}
+
+因为 \code{swap} 里的 \code{x}、\code{y} 只是 \code{a}、\code{b} 的副本，交换副本不影响原件。要修改原件，就得把地址传进去：
+
+\begin{codebox}{swap-pointer.c —— 用指针交换}
+#include <stdio.h>
+
+void swap(int *px, int *py)
+{
+    int t;
+
+    t = *px;
+    *px = *py;
+    *py = t;
+}
+
+int main(void)
+{
+    int a = 3;
+    int b = 5;
+
+    swap(&a, &b);       /* 传地址 */
+    printf("a = %d, b = %d\n", a, b);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a = 5, b = 3
+\end{outbox}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
+    \node[draw=memline,fill=memfill,minimum width=2cm,minimum height=1cm,align=center] (a) at (0,0) {\texttt{a}\\3};
+    \node[draw=memline,fill=memfill,minimum width=2cm,minimum height=1cm,align=center] (b) at (6,0) {\texttt{b}\\5};
+    \node[draw=ptrline,fill=ptrfill,minimum width=2cm,minimum height=1cm,align=center] (px) at (0,-2.2) {\texttt{px}};
+    \node[draw=ptrline,fill=ptrfill,minimum width=2cm,minimum height=1cm,align=center] (py) at (6,-2.2) {\texttt{py}};
+    \draw[ptr] (px.north) -- (a.south);
+    \draw[ptr] (py.north) -- (b.south);
+    \node[font=\small,below=3mm of px] {指向 a};
+    \node[font=\small,below=3mm of py] {指向 b};
+  \end{tikzpicture}
+  \caption{传地址后，函数通过指针直接修改 \texttt{a} 和 \texttt{b}}
+  \label{fig:swap-pointer}
+\end{figure}
+
+\subsection{指针参数与数组参数}
+
+数组作为函数参数时，会“退化”成指向首元素的指针。所以下面两种写法等价：
+
+\begin{codebox}{array-param.c —— 数组参数就是指针}
+void print_array(int a[], int n);   /* 写法一 */
+void print_array(int *a, int n);    /* 写法二，完全等价 */
+\end{codebox}
+
+在函数内部，\code{sizeof(a)} 得到的是指针大小，不是数组大小。所以长度必须额外传进来：
+
+\begin{codebox}{print-array.c —— 打印数组}
+#include <stdio.h>
+
+void print_array(int *a, int n)
+{
+    int i;
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+}
+
+int main(void)
+{
+    int arr[5] = {1, 2, 3, 4, 5};
+
+    print_array(arr, 5);        /* 数组名就是首元素地址 */
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+1 2 3 4 5
+\end{outbox}
+
+\section{指针与数组}
+
+\subsection{数组名的含义}
+
+数组名在大多数表达式里会转换成“指向首元素的指针”，即：
+
+\[
+\texttt{a} \quad \text{等价于} \quad \texttt{\&a[0]}.
+\]
+
+所以下面四种写法访问的是同一个元素：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+写法 & 含义 \\
+\midrule
+\code{a[i]} & 下标访问 \\
+\code{*(a + i)} & 先算地址，再解引用 \\
+\code{*(p + i)} & \code{p} 指向 \code{a[0]} 时 \\
+\code{p[i]} & 指针也可以下标访问 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{codebox}{pointer-array.c —— 指针遍历数组}
+#include <stdio.h>
+
+int main(void)
+{
+    int a[5] = {10, 20, 30, 40, 50};
+    int *p = a;         /* p 指向 a[0] */
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        printf("a[%d] = %d, *(p+%d) = %d\n",
+               i, a[i], i, *(p + i));
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a[0] = 10, *(p+0) = 10
+a[1] = 20, *(p+1) = 20
+a[2] = 30, *(p+2) = 30
+a[3] = 40, *(p+3) = 40
+a[4] = 50, *(p+4) = 50
+\end{outbox}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
+    \foreach \i/\v in {0/10,1/20,2/30,3/40,4/50} {
+      \node[membox,minimum width=1.5cm] (a\i) at (\i*1.7,0) {\v};
+      \node[font=\scriptsize,color=black!55,below=1mm of a\i] {\texttt{a[\i]}};
+    }
+    \node[ptrbox,minimum width=1.4cm] (p) at (-2.4,-1.6) {\texttt{p}};
+    \draw[ptr] (p.north) -- (a0.south);
+    \node[ptrbox,minimum width=1.4cm] (p1) at (-0.7,-1.6) {\texttt{p+1}};
+    \draw[ptr] (p1.north) -- (a1.south);
+    \node[ptrbox,minimum width=1.4cm] (p2) at (1.0,-1.6) {\texttt{p+2}};
+    \draw[ptr] (p2.north) -- (a2.south);
+    \node[font=\small,color=ptrline] at (3.4,-1.6) {指针加 1，指向下一个元素};
+  \end{tikzpicture}
+  \caption{指针算术：\texttt{p+i} 指向第 \texttt{i} 个元素}
+  \label{fig:pointer-arithmetic}
+\end{figure}
+
+\subsection{指针算术}
+
+指针加 1，不是地址加 1 字节，而是加“一个元素的大小”：
+
+\begin{itemize}
+  \item \code{int *p}：\code{p + 1} 的地址增加 \code{sizeof(int)}（通常 4 字节）；
+  \item \code{double *p}：\code{p + 1} 增加 8 字节；
+  \item \code{char *p}：\code{p + 1} 增加 1 字节。
+\end{itemize}
+
+两个同类型指针相减，得到它们之间相隔的元素个数：
+
+\begin{codebox}{pointer-diff.c —— 指针相减}
+#include <stdio.h>
+
+int main(void)
+{
+    int a[5] = {10, 20, 30, 40, 50};
+    int *p = &a[1];
+    int *q = &a[4];
+
+    printf("q - p = %d\n", (int)(q - p));   /* 3 个元素 */
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+q - p = 3
+\end{outbox}
+
+\subsection{数组名、首元素地址与整个数组的地址}
+
+\code{a}、\texttt{\&a[0]}、\texttt{\&a} 的值通常相同，但类型不同：
+
+\begin{itemize}
+  \item \code{a} 和 \texttt{\&a[0]}：类型是 \code{int *}；
+  \item \texttt{\&a}：类型是“指向整个数组的指针”，\texttt{\&a + 1} 会跳过整个数组。
+\end{itemize}
+
+\begin{codebox}{array-address.c —— 三种写法的区别}
+#include <stdio.h>
+
+int main(void)
+{
+    int a[5] = {1, 2, 3, 4, 5};
+
+    printf("a     = %p\n", (void *)a);
+    printf("&a[0] = %p\n", (void *)&a[0]);
+    printf("&a    = %p\n", (void *)&a);
+    printf("a + 1   = %p\n", (void *)(a + 1));
+    printf("&a + 1  = %p\n", (void *)(&a + 1));
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果（地址示意）}
+a     = 000000000061FE00
+&a[0] = 000000000061FE00
+&a    = 000000000061FE00
+a + 1   = 000000000061FE04
+&a + 1  = 000000000061FE14
+\end{outbox}
+
+\code{a + 1} 前进了 4 字节（一个 \code{int}），\texttt{\&a + 1} 前进了 20 字节（整个数组）。初学阶段不必深究，知道有区别即可。
+
+\section{指针与结构体}
+
+指向结构体的指针用 \code{->} 访问成员：
+
+\begin{codebox}{struct-pointer2.c —— 结构体指针}
+#include <stdio.h>
+
+typedef struct {
+    int id;
+    double score;
+} Student;
+
+int main(void)
+{
+    Student s = {1001, 92.5};
+    Student *p = &s;
+
+    printf("%d\n", p->id);          /* 等价于 (*p).id */
+    p->score = 95.0;
+    printf("%.1f\n", s.score);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+1001
+95.0
+\end{outbox}
+
+结构体指针在链表、树、函数参数里非常常用。传结构体指针给函数，既避免复制，又能修改原结构体。
+
+\section{二级指针与函数指针（拔高）}
+
+\subsection{二级指针}
+
+指针本身也有地址，所以可以有“指向指针的指针”：
+
+\begin{codebox}{double-pointer.c —— 二级指针}
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 5;
+    int *p = &a;
+    int **pp = &p;
+
+    **pp = 10;          /* 通过二级指针修改 a */
+    printf("a = %d\n", a);
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+a = 10
+\end{outbox}
+
+二级指针常用于：函数需要修改“指针本身”（例如在函数里 \code{malloc} 并让调用者的指针指向新内存），或者二维数组、字符串数组。
+
+\subsection{函数指针}
+
+函数也有地址，可以定义指向函数的指针：
+
+\begin{codebox}{function-pointer.c —— 函数指针}
+#include <stdio.h>
+
+int add(int a, int b)
+{
+    return a + b;
+}
+
+int main(void)
+{
+    int (*fp)(int, int);    /* fp 是指向“两个 int 参数、返回 int”的函数的指针 */
+
+    fp = add;
+    printf("%d\n", fp(2, 3));   /* 通过函数指针调用 */
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+5
+\end{outbox}
+
+函数指针在回调、状态机、驱动表里很常见。初学阶段知道语法即可，不必急着用。
+
+\section{动态内存}
+
+\subsection{为什么需要动态内存}
+
+数组的长度必须在编译时确定，如果运行时才知道要多少数据怎么办？用 \code{malloc} 在堆上动态申请内存。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \fill[structurecolor!10] (0,0) rectangle (6,0.9);
+    \fill[structurecolor!18] (0,1.1) rectangle (6,1.8);
+    \fill[structurecolor!8] (0,2.0) rectangle (6,4.0);
+    \fill[structurecolor!18] (0,4.2) rectangle (6,5.2);
+    \node[font=\small\bfseries] at (3,0.45) {代码区};
+    \node[font=\small\bfseries] at (3,1.45) {数据区};
+    \node[font=\small\bfseries] at (3,3.0) {堆（malloc 申请）};
+    \node[font=\small\bfseries] at (3,4.7) {栈（局部变量）};
+    \node[font=\scriptsize,color=black!55,anchor=west] at (6.2,0.45) {机器指令};
+    \node[font=\scriptsize,color=black!55,anchor=west] at (6.2,1.45) {全局/静态变量};
+    \node[font=\scriptsize,color=black!55,anchor=west] at (6.2,3.0) {向上生长，手动释放};
+    \node[font=\scriptsize,color=black!55,anchor=west] at (6.2,4.7) {向下生长，自动释放};
+  \end{tikzpicture}
+  \caption{堆与栈：\texttt{malloc} 在堆上分配，\texttt{free} 释放}
+  \label{fig:heap-stack}
+\end{figure}
+
+\subsection{\texttt{malloc} 与 \texttt{free}}
+
+\begin{codebox}{malloc.c —— 动态数组}
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int n;
+    int i;
+    int *a;
+
+    printf("请输入元素个数：");
+    scanf("%d", &n);
+
+    a = (int *)malloc(n * sizeof(int));
+    if (a == NULL) {
+        printf("内存分配失败\n");
+        return 1;
+    }
+
+    printf("请输入 %d 个整数：", n);
+    for (i = 0; i < n; i++) {
+        scanf("%d", &a[i]);
+    }
+
+    for (i = 0; i < n; i++) {
+        printf("%d ", a[i]);
+    }
+    printf("\n");
+
+    free(a);        /* 用完必须释放 */
+    a = NULL;       /* 防止野指针 */
+
+    return 0;
+}
+\end{codebox}
+
+要点：
+
+\begin{itemize}
+  \item \code{malloc(n * sizeof(int))} 申请 $n$ 个 \code{int} 的空间，返回首地址（\code{void *}）；
+  \item 强制转换成 \code{(int *)} 是为了类型匹配；
+  \item 申请可能失败，返回 \code{NULL}，必须检查；
+  \item 用完调用 \code{free(a)} 释放；
+  \item 释放后把指针置 \code{NULL}，避免“悬空指针”。
+\end{itemize}
+
+\begin{pitfall}[动态内存的四个大坑]
+\begin{enumerate}
+  \item \textbf{忘记 free}：内存泄漏，程序越跑越占内存；
+  \item \textbf{重复 free}：未定义行为，可能崩溃；
+  \item \textbf{free 后继续使用}：悬空指针，数据已被回收；
+  \item \textbf{越界写}：\code{a[n]} 越界，破坏堆结构。
+\end{enumerate}
+\end{pitfall}
+
+\subsection{\texttt{calloc} 与 \texttt{realloc}}
+
+\begin{codebox}{calloc-realloc.c —— calloc 与 realloc}
+/* calloc：申请 n 个元素，并自动清零 */
+int *a = (int *)calloc(n, sizeof(int));
+
+/* realloc：把已申请的空间调整为 new_n 个元素 */
+int *b = (int *)realloc(a, new_n * sizeof(int));
+if (b == NULL) {
+    /* 调整失败，原来的 a 仍然有效 */
+}
+\end{codebox}
+
+\section{指针的常见错误}
+
+\begin{center}
+\begin{tabular}{@{}p{0.4\textwidth}p{0.5\textwidth}@{}}
+\toprule
+错误 & 后果 \\
+\midrule
+使用未初始化的指针 & 野指针，崩溃或破坏数据 \\
+\code{*p = 10;} 但 \code{p} 未指向有效内存 & 同上 \\
+数组越界后继续用指针 & 未定义行为 \\
+\code{free} 后继续使用 & 悬空指针 \\
+重复 \code{free} & 崩溃 \\
+忘记 \code{free} & 内存泄漏 \\
+\code{p = 10;} & 类型错误：不能把整数赋给指针 \\
+返回局部变量的地址 & 函数结束后地址失效 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[不要返回局部变量的地址]
+\begin{codebox}{return-local.c —— 错误：返回局部变量地址}
+int *bad(void)
+{
+    int x = 10;
+    return &x;      /* x 在函数返回后就失效了 */
+}
+\end{codebox}
+函数返回后，局部变量所在的栈空间会被回收，返回的地址指向一块不再有效的地方。
+\end{pitfall}
+
+\section{指针与 \texttt{const}}
+
+\code{const} 和指针结合时，位置不同含义不同：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+写法 & 含义 \\
+\midrule
+\code{const int *p} & 指向的内容不能改，指针本身可以改 \\
+\code{int * const p} & 指针本身不能改，指向的内容可以改 \\
+\code{const int * const p} & 两者都不能改 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{codebox}{const-pointer.c —— const 指针}
+void print(const int *p)
+{
+    /* *p = 10; 错误：不能通过 p 修改内容 */
+    printf("%d\n", *p);
+}
+\end{codebox}
+
+函数参数里用 \code{const int *} 表示“我只读，不改”，既清晰又安全。
+
+\section{综合例题}
+
+\begin{example}
+用指针实现数组逆序。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{reverse-pointer.c —— 指针逆序}
+#include <stdio.h>
+
+int main(void)
+{
+    int a[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int *left = a;
+    int *right = a + 9;
+    int temp;
+
+    while (left < right) {
+        temp = *left;
+        *left = *right;
+        *right = temp;
+
+        left++;
+        right--;
+    }
+
+    {
+        int i;
+        for (i = 0; i < 10; i++) {
+            printf("%d ", a[i]);
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+10 9 8 7 6 5 4 3 2 1
+\end{outbox}
+
+在 C89 里不能在 \code{while} 后面临时声明 \code{i}，所以代码里用了一个花括号块，把 \code{i} 的声明放在块开头。
+\end{solution}
+
+\begin{example}
+写一个函数，用指针求数组的最大值。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{max-pointer.c —— 指针求最大值}
+#include <stdio.h>
+
+int max_array(const int *a, int n)
+{
+    int i;
+    int max = a[0];
+
+    for (i = 1; i < n; i++) {
+        if (a[i] > max) {
+            max = a[i];
+        }
+    }
+    return max;
+}
+
+int main(void)
+{
+    int a[5] = {3, 9, 1, 7, 5};
+
+    printf("最大值 = %d\n", max_array(a, 5));
+    return 0;
+}
+\end{codebox}
+\end{solution}
+
+\begin{example}
+用 \texttt{malloc} 申请一个数组，读入 $n$ 个数，求平均值后释放。
+\end{example}
+\begin{solution}
+思路如下：
+
+\begin{codebox}{dynamic-average.c —— 动态数组求平均}
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int n;
+    int i;
+    int *a;
+    double sum = 0.0;
+
+    printf("请输入个数：");
+    scanf("%d", &n);
+
+    a = (int *)malloc(n * sizeof(int));
+    if (a == NULL) {
+        printf("分配失败\n");
+        return 1;
+    }
+
+    printf("请输入 %d 个数：", n);
+    for (i = 0; i < n; i++) {
+        scanf("%d", &a[i]);
+        sum = sum + a[i];
+    }
+
+    printf("平均值 = %.2f\n", sum / n);
+
+    free(a);
+    a = NULL;
+    return 0;
+}
+\end{codebox}
+\end{solution}
+
+\section{本章小结}
+
+\begin{center}
+\begin{tabular}{@{}p{0.24\textwidth}p{0.66\textwidth}@{}}
+\toprule
+主题 & 要点 \\
+\midrule
+指针 & 存地址的变量；\texttt{\&} 取地址，\code{*} 解引用 \\
+类型 & 指针有类型，\code{int *} 和 \code{double *} 不同 \\
+空指针 & \code{NULL}，不能解引用 \\
+函数 & 传指针才能修改调用者的变量；数组参数退化为指针 \\
+数组 & \code{a[i]} 等价于 \code{*(a+i)}；指针加 1 走一个元素 \\
+结构体 & \code{p->member} 等价于 \code{(*p).member} \\
+动态内存 & \code{malloc}/\code{free}；检查 \code{NULL}；释放后置空 \\
+常见错误 & 野指针、悬空指针、内存泄漏、越界、返回局部地址 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}[下一章预告]
+指针和字符数组结合，就是 C 语言的字符串。字符串是电控里处理命令、日志、协议时最常用的数据形式。下一章我们会把字符、字符数组、字符串常量、指针之间的关系彻底理清。
+\end{tipbox}
+
+\begin{problemset}
+  \item 定义变量 \code{int a = 10}，用指针输出 \code{a} 的值和地址，并通过指针把 \code{a} 改成 20。
+  \item 写函数 \code{swap(int *a, int *b)} 交换两个整数，并在 \code{main} 中验证。
+  \item 用指针遍历数组，输出所有元素。
+  \item 用指针实现数组逆序。
+  \item 用指针求数组的最大值、最小值和平均值。
+  \item 写函数 \code{void add_score(Student *s, double x)}，给学生成绩加 \code{x} 分（不超过 100）。
+  \item 用 \code{malloc} 申请 $n$ 个整数，读入并排序（可以用冒泡），然后释放。
+  \item 解释 \code{a}、\texttt{\&a[0]}、\texttt{\&a} 的区别。
+  \item 解释 \code{const int *p} 和 \code{int * const p} 的区别。
+  \item 思考题：为什么函数参数用数组形式 \code{int a[]} 时，函数内部无法用 \code{sizeof} 求长度？
+\end{problemset}
