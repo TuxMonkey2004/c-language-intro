@@ -6,31 +6,31 @@
 \section{第 1 章}
 
 \begin{enumerate}
-  \item $(1010)_2=10$，$(1111\,0000)_2=240$，$(1000\,0001)_2=129$。
-  \item $13=(0000\,1101)_2=\mathrm{0D}_{16}$；$100=(0110\,0100)_2=\mathrm{64}_{16}$；$255=(1111\,1111)_2=\mathrm{FF}_{16}$。
-  \item $+17=0001\,0001$，取反 $1110\,1110$，加 1 得 \code{1110 1111}。
-  \item 取反得 $0001\,0010$，加 1 得 $0001\,0011=19$，所以原值为 $-19$。
-  \item \code{1000 0000} 被规定为 $-128$；8 位没有足够的位表示 $+128$，所以正数最大只到 127。
-  \item 用 \texttt{printf("\%d", (int)sizeof(int));} 等语句逐个打印，注意 \code{sizeof} 返回 \code{size_t}。
-  \item 输出为 0（不相等）。因为 0.1 和 0.2 在二进制中无法精确表示，相加结果与 0.3 有微小误差，不能用 \code{==} 比较。
-  \item 地址是内存单元的编号；字节序是多字节数据在内存中的排列顺序。小端把低字节放低地址，大端相反。
-  \item 预处理（展开头文件和宏）→ 编译（生成汇编）→ 汇编（生成目标文件）→ 链接（生成可执行文件）。
-  \item \code{unsigned char} 从 255 加 1 得到 0（模 256 回绕，行为明确）；\code{signed char} 从 127 加 1 是未定义行为，常见实现得到 $-128$，但不可依赖。
+  \item 输入、处理、输出。比如计算器：按键是输入，内部计算是处理，屏幕显示是输出。
+  \item CPU 像大脑，负责计算和指挥；内存像草稿纸，临时存放正在用的数据；硬盘像书包，长期存放数据。
+  \item 内存速度快，但一断电内容就没了；硬盘速度慢，但断电后数据还在。
+  \item 比如只说“把水烧开”，计算机不知道用什么烧、烧到多少度、烧多久。必须把每一步写清楚。
+  \item $(1010)_2=10$，$(1100)_2=12$，$(11111)_2=31$。
+  \item 1 个字节等于 8 位；一个字节可以表示 $2^8=256$ 种不同的组合。
+  \item 存的是 65。计算机里只有数字，字符要按 ASCII 码表转换成数字来存。
+  \item 写代码 → 编译器翻译 → 生成可执行程序 → 双击运行。编译器把 C 代码翻译成机器能执行的指令。
+  \item 编译错误是代码写错了，编译器看不懂，程序生成不了，比如少分号；运行错误是程序能生成，但运行时做错了事，比如除以 0。
+  \item 因为电子电路最容易实现两种稳定状态：通电和断电。用 0 和 1 表示最可靠、最简单。
 \end{enumerate}
 
 \section{第 2 章}
 
 \begin{enumerate}
-  \item 用三次 \code{printf}，注意换行 \texttt{\textbackslash n}。
-  \item \texttt{printf("\%d \%d \%d \%d \%d", a+b, a-b, a*b, a/b, a\%b);}，除法是整数除法。
-  \item \code{c = (f - 32) * 5.0 / 9.0;}，用 \texttt{\%.2f} 输出。
-  \item 周长 \code{2 * 3.1415926 * r}，面积 \code{3.1415926 * r * r}。
-  \item 千位 \code{n / 1000}，百位 \texttt{n / 100 \% 10}，十位 \texttt{n / 10 \% 10}，个位 \texttt{n \% 10}，相加即可。
-  \item 三步交换：\code{temp = a; a = b; b = temp;}。
-  \item 错误：第一行 \code{int a = 1} 少分号；\code{sum} 未声明；\code{printf} 少分号。另外 \code{sum} 应先声明为 \code{int}。
-  \item \texttt{\%d} 要求 \code{int}，而 3.14 是 \code{double}，属于未定义行为；应写 \texttt{printf("\%f", 3.14);}。
-  \item 各位和：\texttt{n/100 + n/10\%10 + n\%10}；逆序：\texttt{(n\%10)*100 + (n/10\%10)*10 + n/100}。
-  \item \code{scanf} 需要把输入写到变量所在的内存，所以必须传地址；\code{printf} 只需要读取变量的值，传值即可。
+  \item 用两次 \texttt{printf}，每句末尾加 \texttt{\textbackslash n} 换行。
+  \item 读入两个整数，分别输出 \texttt{a+b}、\texttt{a-b}、\texttt{a*b}。
+  \item 周长 \texttt{2 * 3.14159 * r}，面积 \texttt{3.14159 * r * r}，用 \texttt{\%.2f} 输出。
+  \item 面积 \texttt{length * width}，周长 \texttt{2 * (length + width)}。
+  \item 先读入三个整数，再算 \texttt{(a + b + c) / 3.0}，保留两位小数。
+  \item 三步交换：\texttt{temp = a; a = b; b = temp;}。
+  \item 错误：第一行 \texttt{int a = 1} 少分号；\texttt{sum} 没有声明；\texttt{printf} 后面少分号。
+  \item \texttt{\&} 是取地址，告诉 \texttt{scanf} 把读到的数放到变量 \texttt{a} 的盒子里。
+  \item \texttt{\%d} 要求整数，而 3.14 是小数，应该用 \texttt{printf("\%f", 3.14);}。
+  \item 声明变量就是让编译器准备一个盒子，并记住盒子的类型和名字，后面才能安全地往里放数据。
 \end{enumerate}
 
 \section{第 3 章}
@@ -141,18 +141,16 @@
 \section{第 10 章}
 
 \begin{enumerate}
-  \item 冒泡排序外层控制轮数，内层相邻比较；每轮结束输出一次数组。
-  \item 选择排序把“找最小”改成“找最大”，交换到前面。
-  \item 插入排序中 \code{a[j] > key} 比较一次、\code{a[j+1]=a[j]} 移动一次，分别计数。
-  \item 希尔排序把间隔从 \code{n/2} 开始每次减半。
-  \item 归并排序先递归二分，再合并两个有序段；合并时输出临时数组。
-  \item 快速排序选基准划分，递归左右；每趟划分后输出数组。
-  \item 写 \code{cmp_student}，按 \code{score} 比较，调用 \code{qsort}。
-  \item 先排序，再用 \code{low/high/mid} 二分查找并计数。
-  \item 用 \code{clock()} 包住排序调用，计算 \code{(double)(end-start)/CLOCKS_PER_SEC}。
-  \item 选择排序会“跨距离交换”，可能把两个相等元素的相对顺序打乱。例如 \code{5a, 5b, 3}，第一轮把 3 和 5a 交换，得到 \code{3, 5b, 5a}，5a 和 5b 的顺序变了。
+  \item 初始 \texttt{5 3 8 1 2}；第一轮后 \texttt{3 5 1 2 8}；第二轮后 \texttt{3 1 2 5 8}；第三轮后 \texttt{1 2 3 5 8}；第四轮后不变，排序完成。
+  \item 初始 \texttt{9 4 7 2 6}；第一轮把 2 换到最前：\texttt{2 4 7 9 6}；第二轮 4 已在第二位；第三轮把 6 换到 7 前面：\texttt{2 4 6 9 7}；第四轮交换 9 和 7：\texttt{2 4 6 7 9}。
+  \item 初始 \texttt{6 2 8 4 1}；插入 2 得 \texttt{2 6 8 4 1}；插入 8 不变；插入 4 得 \texttt{2 4 6 8 1}；插入 1 得 \texttt{1 2 4 6 8}。
+  \item 把冒泡排序里的 \texttt{a[j] > a[j + 1]} 改成 \texttt{a[j] < a[j + 1]}。
+  \item 读入 10 个数到数组，用本章冒泡排序代码排序，再循环输出。
+  \item 选择排序中把“找最小”改成“找最大”，比较符号由 \texttt{<} 改成 \texttt{>}，最后从大到小输出。
+  \item 读入 10 个成绩，用冒泡或选择排序按从高到低输出即可。
+  \item 插入排序最省事，因为数据已经有序时，每次只需要比较一次，几乎不用挪动。
+  \item 因为每轮结束后，最后面已经有 \texttt{i} 个数排好了，它们不需要再比较，所以这一轮只比较前 \texttt{n - 1 - i} 个。
 \end{enumerate}
-
 \section{第 11 章}
 
 \begin{enumerate}

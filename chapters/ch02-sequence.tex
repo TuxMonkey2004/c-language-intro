@@ -1,198 +1,207 @@
 \chapter{正式上路：顺序结构程序设计}
 
 \begin{introduction}
-  \item 从第一个程序开始，逐行读懂 C 程序的骨架
-  \item 变量：名字、类型、值、地址四件事
-  \item 基本数据类型与字面量的写法
-  \item \texttt{printf} 与 \texttt{scanf}：程序如何说话、如何倾听
-  \item 表达式、语句、注释与 C89 的声明规则
-  \item 顺序结构的综合例题与常见错误
+  \item 写第一个 C 程序，并逐行看懂它
+  \item 变量：给数据准备一个盒子
+  \item 用 \texttt{printf} 输出，用 \texttt{scanf} 输入
+  \item 顺序结构：输入 → 计算 → 输出
+  \item 注释、缩进和常见错误
 \end{introduction}
 
-\chaptermotto{「所有伟大的程序，都是从一行 \texttt{printf} 开始的。」}
+\chaptermotto{「先把一句话说清楚，再写第一行代码。」}
 
-上一章我们把舞台搭好了：CPU 执行指令，数据存在内存里，变量有地址，整数用补码、小数用浮点。现在，是时候让程序真正跑起来了。
+上一章我们认识了计算机：它很笨，只会按步骤做事。这一章，我们第一次给它下命令。
 
-这一章只讲一件事：\textbf{顺序结构}——程序从上到下，一条语句接一条语句地执行。没有判断，没有循环，就像照着菜谱一步步做菜。听起来简单，但它是后面所有结构的基础。请把这一章的每个例子都亲手敲一遍。
+你不需要记住很多语法。先跟着做，把第一个程序跑起来。跑起来以后，我们再一行一行弄懂它。
 
-\section{第一个程序：Hello, world!}
+\section{第一个程序}
 
-\subsection{完整代码}
+\subsection{写代码}
+
+打开你的编辑器，新建一个文件，名字叫 \texttt{hello.c}，把下面几行抄进去：
 
 \begin{codebox}{hello.c —— 第一个 C 程序}
 #include <stdio.h>
 
 int main(void)
 {
-    printf("Hello, world!\n");
+    printf("你好，计算机！\n");
     return 0;
 }
 \end{codebox}
 
+编译并运行后，屏幕上会出现：
+
 \begin{outbox}{运行结果}
-Hello, world!
+你好，计算机！
 \end{outbox}
 
-短短 5 行代码，包含了 C 程序的所有基本骨架。我们一行一行拆开看。
+恭喜，你已经写出第一个程序了！下面我们一行一行看，它到底在说什么。
 
-\subsection{逐行解剖}
+\subsection{逐行解释}
 
-\subsubsection*{第 1 行：\texttt{\#include <stdio.h>}}
+\subsubsection*{第一行：\texttt{\#include <stdio.h>}}
 
-这是一条\textbf{预处理指令}。它以 \code{#} 开头，在真正的编译开始之前，由预处理器处理。
+这一行是“借工具箱”。
 
-\begin{itemize}
-  \item \code{stdio} 是 \en{standard input/output}（标准输入输出）的缩写；
-  \item \code{.h} 表示头文件（header）；
-  \item 这一行的意思是：把 \file{stdio.h} 这个文件的内容“复制粘贴”到当前位置。
-\end{itemize}
+\texttt{stdio} 是“标准输入输出”的缩写。我们马上要用到的 \texttt{printf}（在屏幕上打印）就放在这个工具箱里。写这一行，相当于告诉计算机：“我要用这个工具箱里的东西。”
 
-为什么要包含它？因为 \code{printf} 这个函数的“说明书”就写在 \file{stdio.h} 里。没有这条指令，编译器就不认识 \code{printf}，会报“隐式声明”的警告或错误。
-
-\begin{tipbox}[头文件不是库]
-\code{#include <stdio.h>} 只是把\textbf{声明}拿进来，告诉你“有这么个函数，参数长这样”。函数真正的实现（机器指令）在链接阶段才从 C 标准库里接进来。这就是第 1 章讲的“编译”和“链接”的分工。
+\begin{tipbox}[暂时不用深究]
+你现在只要记住：\textbf{只要用到 \texttt{printf} 或 \texttt{scanf}，开头就写这一行}。为什么、怎么找到工具箱的，以后会慢慢明白。
 \end{tipbox}
 
-\subsubsection*{第 3 行：\texttt{int main(void)}}
+\subsubsection*{第三行：\texttt{int main(void)}}
 
-这是程序的\textbf{入口}。操作系统加载你的程序后，会先找到 \code{main} 函数，从它的第一行开始执行。
+这一行是程序的“大门”。
+
+计算机运行程序时，会先找到 \texttt{main}，从它后面的花括号开始，一句一句往下执行。
 
 \begin{itemize}
-  \item \code{int}：这个函数执行完后，会返回一个整数给操作系统；
-  \item \code{main}：函数名，固定写法，不能改；
-  \item \code{void}：表示这个函数不接收参数。也可以写成 \code{int main()}，但 \code{void} 更明确；
-  \item 括号和后面的花括号：函数体，也就是这个函数要执行的语句。
+  \item \texttt{main} 是固定的名字，不能改；
+  \item \texttt{int} 表示程序结束时会给计算机一个整数；
+  \item \texttt{(void)} 表示这个程序不需要从外面接收参数。
 \end{itemize}
 
-\begin{pitfall}[\texttt{void main()} 是错的]
-很多老教材写 \code{void main()}，这在标准 C 里是不规范的。请始终写 \code{int main(void)}，并在结尾写 \code{return 0;}。\code{return 0;} 告诉操作系统“程序正常结束”。
+\subsubsection*{花括号 \texttt{\{ \}}：范围}
+
+花括号里的内容，是这个程序要做的所有事情。就像写作文的“正文部分”。
+
+\subsubsection*{第五行：\texttt{printf("你好，计算机！\textbackslash n");}}
+
+这一行让计算机“说话”。
+
+\begin{itemize}
+  \item \texttt{printf} 是打印函数，负责把双引号里的内容显示到屏幕上；
+  \item 双引号里的文字，会原样显示；
+  \item \texttt{\textbackslash n} 表示“换行”，不是两个普通字符；
+  \item 最后的分号 \texttt{;} 表示“这句话说完了”，相当于中文的句号。
+\end{itemize}
+
+\begin{pitfall}[分号不能少]
+C 语言的每条语句后面都要有分号。少一个分号，编译器就会报错。分号必须是英文的 \texttt{;}，不能是中文的 \texttt{；}。
 \end{pitfall}
 
-\subsubsection*{第 5 行：\texttt{printf("Hello, world!\textbackslash n");}}
+\subsubsection*{第六行：\texttt{return 0;}}
 
-这是一条\textbf{函数调用语句}，拆成四部分：
+这一行告诉计算机：“程序正常结束了。”
+
+0 表示“一切正常”。如果程序出了问题，可以返回别的数字，但对初学者来说，先固定写 \texttt{return 0;} 就好。
+
+\subsection{程序的基本骨架}
+
+把上面的程序缩成一幅图，就是：
 
 \begin{center}
-\begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
-  \node[font=\ttfamily\small] (p) at (0,0) {printf};
-  \node[font=\ttfamily\small] (lp) at (1.5,0) {(};
-  \node[font=\ttfamily\small,draw=structurecolor!60,fill=structurecolor!6,rounded corners=1mm,inner sep=2pt] (s) at (5.2,0) {"Hello, world!\textbackslash n"};
-  \node[font=\ttfamily\small] (rp) at (8.7,0) {);};
-  \node[lbl,above=3mm of p] {函数名};
-  \node[lbl,above=3mm of s] {格式串（字符串字面量）};
-  \node[lbl,above=3mm of rp] {语句结束};
+\begin{tikzpicture}[x=1cm,y=1cm,node distance=4mm]
+  \node[box,minimum width=8cm,align=left,font=\ttfamily\small] (a) {\#include <stdio.h>};
+  \node[box,minimum width=8cm,align=left,font=\ttfamily\small,below=of a] (b) {int main(void)};
+  \node[box,minimum width=8cm,align=left,font=\ttfamily\small,below=of b] (c) {\{ 要做的事情 \}};
+  \node[lbl,right=3mm of a] {借工具箱};
+  \node[lbl,right=3mm of b] {程序大门};
+  \node[lbl,right=3mm of c] {程序内容};
 \end{tikzpicture}
 \end{center}
 
-\begin{itemize}
-  \item \code{printf} 是标准库函数，负责“格式化输出”；
-  \item 双引号括起来的部分叫\textbf{字符串字面量}；
-  \item \code{\n} 是转义字符，表示“换行”，不是两个普通字符；
-  \item 最后的分号 \code{;} 表示一条语句结束。\textbf{C 语言里，语句必须有分号}。
-\end{itemize}
-
-\subsubsection*{第 6 行：\texttt{return 0;}}
-
-把整数 0 返回给操作系统。0 通常表示“成功”，非 0 表示“出错”。在 \code{main} 里，\code{return 0;} 是程序正常退出的标志。
-
-\subsection{程序的结构}
-
-把上面的代码抽象一下，一个最简单的 C 程序长这样：
-
-\begin{center}
-\begin{tikzpicture}[x=1cm,y=1cm,>=Stealth,node distance=4mm]
-  \node[box,minimum width=9cm,align=left,font=\ttfamily\small] (inc) {\#include <stdio.h>};
-  \node[box,minimum width=9cm,align=left,font=\ttfamily\small,below=of inc] (main) {int main(void)};
-  \node[box,minimum width=9cm,align=left,font=\ttfamily\small,below=of main] (body) {\{ \quad 语句 1；语句 2；…… \quad \}};
-  \node[lbl,right=3mm of inc] {预处理指令};
-  \node[lbl,right=3mm of main] {函数头};
-  \node[lbl,right=3mm of body] {函数体};
-\end{tikzpicture}
-\end{center}
-
-\begin{c89box}
-从第一个程序开始就养成习惯：
+\begin{c89box}[写代码的三个好习惯]
 \begin{enumerate}
-  \item \code{main} 写成 \code{int main(void)}；
-  \item 左花括号 \texttt{\{} 单独占一行（也可以跟在函数头后面，但本书统一单独一行）；
-  \item 花括号内的语句统一缩进 4 个空格；
-  \item 每条语句以分号结尾；
-  \item 最后一个 \code{return 0;} 不要忘。
+  \item 花括号单独占一行，里面的语句往右缩进 4 个空格；
+  \item 每条语句后面写英文分号；
+  \item \texttt{main} 写成 \texttt{int main(void)}，结尾写 \texttt{return 0;}。
 \end{enumerate}
 \end{c89box}
 
-\section{变量：给内存里的格子起个名字}
+\section{变量：给数据准备一个盒子}
 
-\subsection{变量是什么}
+\subsection{什么是变量}
 
-第 1 章说过：变量是内存中一块有名字、有类型、有地址的存储空间。用一张图表示：
+变量就是一个“贴了名字的盒子”，里面可以放数据。
 
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[x=1cm,y=1cm]
-    \node[draw=structurecolor!70!black,fill=structurecolor!7,rounded corners=2mm,
-          minimum width=8.2cm,minimum height=3.4cm] (box) at (0,0) {};
-    \node[anchor=west,font=\small] at (-3.8,1.1) {\textbf{名字}：\texttt{a}};
-    \node[anchor=west,font=\small] at (-3.8,0.35) {\textbf{类型}：\texttt{int}（4 字节）};
-    \node[anchor=west,font=\small] at (-3.8,-0.4) {\textbf{值}：\texttt{10}};
-    \node[anchor=west,font=\small] at (-3.8,-1.15) {\textbf{地址}：\texttt{0x1000}};
-    \node[font=\Large\ttfamily,color=structurecolor!80!black] at (2.9,0.35) {10};
-    \node[font=\scriptsize,color=black!55] at (2.9,-0.45) {占用 4 个字节};
-  \end{tikzpicture}
-  \caption{一个 \texttt{int} 变量的四个要素：名字、类型、值、地址}
-  \label{fig:variable}
-\end{figure}
+\begin{center}
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[draw=structurecolor!70,fill=structurecolor!7,rounded corners=2mm,
+        minimum width=3cm,minimum height=1.5cm,align=center] (box) at (0,0)
+    {盒子\\[2pt]\ttfamily 10};
+  \node[font=\small,above=2mm of box] {名字：\texttt{a}};
+  \node[font=\small,below=2mm of box] {类型：\texttt{int}（装整数）};
+\end{tikzpicture}
+\end{center}
 
-这四件事里，\textbf{名字}和\textbf{类型}是给程序员和编译器看的；\textbf{值}是运行时真正存的东西；\textbf{地址}是内存中的位置。编译之后，变量名通常就不存在了，机器只认地址。
+写程序时，我们这样使用它：
 
-\begin{tipbox}[把变量想成贴了标签的储物格]
-储物格有编号（地址）、有大小（类型）、里面放着东西（值），外面贴着标签（名字）。你写 \code{a = 10;}，就是“把 10 放进标签为 \code{a} 的格子里”。
-\end{tipbox}
-
-\subsection{声明、赋值、初始化}
-
-\begin{codebox}{declare.c —— 声明与赋值}
-#include <stdio.h>
-
-int main(void)
-{
-    int a;          /* 声明：告诉编译器“有这么个 int 变量” */
-    int b = 20;     /* 初始化：声明的同时给初值 */
-    int sum;        /* 只声明，暂时没有有意义的值 */
-
-    a = 10;         /* 赋值：把 10 写进 a 的内存 */
-    sum = a + b;    /* 用 a 和 b 的值算出结果，写进 sum */
-
-    printf("a = %d, b = %d, sum = %d\n", a, b, sum);
-    return 0;
-}
+\begin{codebox}{variable.c —— 变量的声明和赋值}
+int a;          /* 准备一个盒子，名字叫 a */
+a = 10;         /* 把 10 放进盒子里 */
 \end{codebox}
 
-\begin{outbox}{运行结果}
-a = 10, b = 20, sum = 30
-\end{outbox}
+也可以把两步合成一步：
+
+\begin{codebox}{variable2.c —— 声明时直接放值}
+int a = 10;     /* 准备盒子 a，并放入 10 */
+\end{codebox}
+
+\subsection{变量的类型}
+
+盒子有不同的大小，能装的东西也不一样。C 语言里常用的类型有三种：
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+类型 & 能装什么 & 例子 \\
+\midrule
+\texttt{int} & 整数 & 0、5、-3、100 \\
+\texttt{double} & 小数 & 3.14、0.5、-2.75 \\
+\texttt{char} & 一个字符 & 'A'、'x'、'5' \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \begin{itemize}
-  \item \textbf{声明}（declaration）：\code{int a;} 告诉编译器“我要一个 \code{int} 类型的变量，名字叫 \code{a}”。
-  \item \textbf{赋值}（assignment）：\code{a = 10;} 把右边表达式的值写进左边变量的内存。
-  \item \textbf{初始化}（initialization）：\code{int b = 20;} 在声明的同时给初值。
+  \item \texttt{int} 是 \en{integer}（整数）的缩写；
+  \item \texttt{double} 表示双精度小数，可以理解为“更精确的小数”；
+  \item \texttt{char} 是 \en{character}（字符）的缩写。
 \end{itemize}
 
-\begin{pitfall}[未初始化的局部变量是“垃圾值”]
-\code{int sum;} 之后如果没有赋值就直接打印它，输出的是一个不可预测的值。局部变量不会自动清零！这是初学者最常见的 bug 之一。\textbf{变量在使用前一定要先赋值}。
-\end{pitfall}
+\begin{tipbox}[先只用这三种]
+初学阶段，整数用 \texttt{int}，小数用 \texttt{double}，单个字符用 \texttt{char}，足够用了。其他类型以后需要再学。
+\end{tipbox}
+
+\subsection{变量名怎么起}
+
+变量名要遵守几条规则：
+
+\begin{itemize}
+  \item 只能用字母、数字、下划线；
+  \item 不能以数字开头；
+  \item 区分大小写，\texttt{a} 和 \texttt{A} 是两个不同的变量；
+  \item 不能用 C 语言的关键字，例如 \texttt{int}、\texttt{return}。
+\end{itemize}
+
+起名字要让人一看就懂：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+好名字 & 不好的名字 \\
+\midrule
+\texttt{age}、\texttt{score}、\texttt{sum} & \texttt{a}、\texttt{b}、\texttt{x1} \\
+\texttt{max\_value}、\texttt{student\_num} & \texttt{abc}、\texttt{tmp1} \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \subsection{C89 的声明规则}
 
-这是本书反复强调的重点。在 C89 里，\textbf{一个语句块内的所有声明必须放在块的开头}，在任何执行语句之前。
+C89 规定：\textbf{一个花括号里，所有变量都要先声明，再写其他语句。}
 
-\begin{codebox}{order.c —— 正确的声明顺序（C89）}
+正确的写法：
+
+\begin{codebox}{declare-ok.c —— 先声明，后使用}
 #include <stdio.h>
 
 int main(void)
 {
     int a = 3;
-    int b = 4;
+    int b = 5;
     int sum;
 
     sum = a + b;
@@ -201,296 +210,126 @@ int main(void)
 }
 \end{codebox}
 
-\begin{codebox}{wrong.c —— 错误示范（C99 才允许）}
+错误的写法：
+
+\begin{codebox}{declare-bad.c —— 声明写在了后面}
 #include <stdio.h>
 
 int main(void)
 {
     int a = 3;
 
-    printf("a = %d\n", a);
+    printf("%d\n", a);
 
-    int b = 4;      /* 错误：声明出现在了执行语句之后 */
-    printf("b = %d\n", b);
+    int b = 5;      /* 错误：声明不能写在语句后面 */
+    printf("%d\n", b);
     return 0;
 }
 \end{codebox}
 
-在 C89 编译器下，\file{wrong.c} 会报类似这样的错误：
-
-\begin{outbox}{编译错误（GCC，-std=c89）}
-wrong.c: In function 'main':
-wrong.c:9:5: error: ISO C90 forbids mixed declarations and code
-\end{outbox}
-
-\begin{c89box}[正确的写法]
-把 \code{int b = 4;} 挪到 \code{printf} 之前、所有执行语句之前：
-\begin{codebox}{right.c —— 声明全部提前}
-#include <stdio.h>
-
-int main(void)
-{
-    int a = 3;
-    int b = 4;
-
-    printf("a = %d\n", a);
-    printf("b = %d\n", b);
-    return 0;
-}
-\end{codebox}
+\begin{c89box}[记住这句话]
+\textbf{变量声明全部写在花括号开头，后面才写执行语句。}后面学 \texttt{for} 循环时，循环变量也要提前声明，不能写在 \texttt{for} 里面。
 \end{c89box}
 
-\subsection{命名规则与风格}
+\section{输出：让计算机说话}
 
-变量名不是随便起的，必须遵守语法：
+\subsection{用 \texttt{printf} 输出}
 
-\begin{itemize}
-  \item 只能包含字母、数字、下划线，且不能以数字开头；
-  \item 区分大小写：\code{sum} 和 \code{Sum} 是两个不同的变量；
-  \item 不能使用关键字（如 \code{int}、\code{return}、\code{for}）；
-  \item 不能和标准库函数重名（例如不要定义叫 \code{printf} 的变量）。
-\end{itemize}
+\texttt{printf} 可以输出文字，也可以输出变量的值。
 
-风格上，本书推荐：
+\begin{codebox}{printf1.c —— 输出文字和数字}
+#include <stdio.h>
+
+int main(void)
+{
+    int age = 18;
+
+    printf("我今年 %d 岁\n", age);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行结果}
+我今年 18 岁
+\end{outbox}
+
+这里的 \texttt{\%d} 是一个“占位符”，意思是“这里要放一个整数”。后面的 \texttt{age} 会填到这个位置。
+
+常用的占位符：
 
 \begin{center}
 \begin{tabular}{@{}lll@{}}
 \toprule
-场景 & 推荐写法 & 说明 \\
+占位符 & 用来输出 & 例子 \\
 \midrule
-普通变量 & \code{sum}、\code{max_value} & 全小写，单词间用下划线 \\
-常量 & \code{MAX_SIZE}、\code{PI} & 全大写，突出“不打算改” \\
-结构体类型 & \code{Student}、\code{MotorState} & 首字母大写 \\
-函数 & \code{compute_sum}、\code{read_sensor} & 小写 + 动词开头 \\
+\texttt{\%d} & 整数 & \texttt{printf("\%d", 10);} \\
+\texttt{\%f} & 小数 & \texttt{printf("\%f", 3.14);} \\
+\texttt{\%.2f} & 保留两位小数 & \texttt{printf("\%.2f", 3.14159);} 输出 3.14 \\
+\texttt{\%c} & 一个字符 & \texttt{printf("\%c", 'A');} \\
+\texttt{\%s} & 字符串 & \texttt{printf("\%s", "你好");} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\begin{pitfall}[这些名字不要用]
-\code{int}、\code{float}、\code{for}、\code{while}、\code{return} 是关键字；\code{printf}、\code{scanf}、\code{main} 是标准库里的名字。用它们当变量名，轻则编译报错，重则行为诡异。
+\begin{pitfall}[占位符和类型要对应]
+整数用 \texttt{\%d}，小数用 \texttt{\%f}。用错了可能输出奇怪的结果。比如用 \texttt{\%d} 输出小数，就是不对的。
 \end{pitfall}
 
-\section{基本数据类型}
+\subsection{换行}
 
-C 语言的基本类型不多，但每一个都有自己的“大小”和“取值范围”。
+\texttt{\textbackslash n} 表示换行。没有它，下一次输出会接在同一行后面。
 
-\subsection{整数类型}
+\begin{codebox}{newline.c —— 换行的效果}
+#include <stdio.h>
 
-\begin{center}
-\begin{tabular}{@{}llll@{}}
-\toprule
-类型 & 典型大小 & 典型范围 & 用途 \\
-\midrule
-\code{char} & 1 字节 & $-128 \sim 127$ & 字符、很小的整数 \\
-\code{unsigned char} & 1 字节 & $0 \sim 255$ & 字节数据、位操作 \\
-\code{short} & 2 字节 & $-32768 \sim 32767$ & 节省内存的小整数 \\
-\code{int} & 4 字节 & 约 $\pm 21$ 亿 & 最常用的整数 \\
-\code{unsigned int} & 4 字节 & $0 \sim 4294967295$ & 计数、位掩码 \\
-\code{long} & 4 或 8 字节 & 平台相关 & 需要更大范围时 \\
-\code{long long} & 8 字节 & 约 $\pm 9.2 \times 10^{18}$ & C99 引入，C89 不一定支持 \\
-\bottomrule
-\end{tabular}
-\end{center}
+int main(void)
+{
+    printf("第一行\n");
+    printf("第二行\n");
+    return 0;
+}
+\end{codebox}
 
-\begin{note}
-“典型大小”只是最常见的情况。C 标准只规定了 \code{char} 一定是 1 字节、\code{short} 不小于 \code{char}、\code{int} 不小于 \code{short} 等相对关系，具体大小由编译器和平台决定。写程序时如果需要精确大小，用 \code{sizeof} 或者 C99 的 \code{int32_t}（C89 下需要自己 typedef）。
-\end{note}
+\begin{outbox}{运行结果}
+第一行
+第二行
+\end{outbox}
 
-\subsection{浮点类型}
+\section{输入：让计算机听我们说话}
 
-\begin{center}
-\begin{tabular}{@{}llll@{}}
-\toprule
-类型 & 典型大小 & 有效数字 & 用途 \\
-\midrule
-\code{float} & 4 字节 & 约 6\textasciitilde7 位 & 精度要求不高的计算 \\
-\code{double} & 8 字节 & 约 15\textasciitilde16 位 & 默认选择，精度更高 \\
-\code{long double} & 8/16 字节 & 平台相关 & 特殊高精度场景 \\
-\bottomrule
-\end{tabular}
-\end{center}
+\subsection{用 \texttt{scanf} 读入}
 
-\begin{tipbox}[新手先用 \texttt{double}]
-除非你明确知道自己在省内存（比如单片机），否则浮点数一律用 \code{double}。\code{float} 的精度比你想的低，累加几次就可能出现明显误差。
+如果想让用户输入数字，就用 \texttt{scanf}。
+
+\begin{codebox}{scanf1.c —— 读入一个整数}
+#include <stdio.h>
+
+int main(void)
+{
+    int a;
+
+    printf("请输入一个整数：");
+    scanf("%d", &a);
+
+    printf("你输入的是 %d\n", a);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入一个整数：7
+你输入的是 7
+\end{outbox}
+
+注意 \texttt{scanf} 里面写的是 \texttt{\&a}，不是 \texttt{a}。这个 \texttt{\&} 读作“取地址”。
+
+\begin{tipbox}[为什么 \texttt{scanf} 要加 \texttt{\&}？]
+\texttt{scanf} 要把读到的数字放进变量 \texttt{a} 的盒子里，所以它需要知道盒子在哪里。\texttt{\&a} 就是“盒子 a 的地址”。现在先照写，等学指针时会彻底明白。
 \end{tipbox}
 
-\subsection{字符类型}
+\subsection{读入两个数}
 
-\code{char} 存的是字符的编码（本质是一个小整数）。例如字符 \code{'A'} 的 ASCII 码是 65：
-
-\begin{codebox}{char.c —— 字符与编码}
-#include <stdio.h>
-
-int main(void)
-{
-    char c = 'A';
-
-    printf("c = %c\n", c);
-    printf("c 的编码 = %d\n", c);
-
-    c = c + 1;              /* 字符也可以参与运算 */
-    printf("c 加 1 后 = %c\n", c);
-
-    return 0;
-}
-\end{codebox}
-
-\begin{outbox}{运行结果}
-c = A
-c 的编码 = 65
-c 加 1 后 = B
-\end{outbox}
-
-注意：\code{'A'} 是字符常量，用单引号；\code{"A"} 是字符串，用双引号，两者完全不同。字符串的细节第 9 章再讲。
-
-\subsection{字面量怎么写}
-
-字面量就是直接写在代码里的值。
-
-\begin{center}
-\begin{tabular}{@{}lll@{}}
-\toprule
-写法 & 例子 & 说明 \\
-\midrule
-十进制整数 & \code{42}、\code{-7} & 最常用 \\
-八进制整数 & \code{052} & 前导 0，等于十进制 42（不推荐） \\
-十六进制整数 & \code{0x2A} & 前缀 \code{0x}，等于十进制 42 \\
-无符号后缀 & \code{42U} & 表示 \code{unsigned} \\
-长整型后缀 & \code{42L} & 表示 \code{long} \\
-浮点数 & \code{3.14}、\code{0.5} & 带小数点 \\
-科学计数法 & \code{1.5e3} & 等于 1500.0 \\
-字符 & \code{'A'}、\code{'0'}、\code{\n} & 单引号，一个字符 \\
-字符串 & \code{"hello"}、\code{""} & 双引号，零个或多个字符 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\subsection{转义字符}
-
-有些字符没法直接写出来（比如换行、制表符），或者有特殊含义（比如双引号），就用反斜杠加字母表示：
-
-\begin{center}
-\begin{tabular}{@{}lll@{}}
-\toprule
-转义 & 含义 & ASCII 码 \\
-\midrule
-\code{\n} & 换行（newline） & 10 \\
-\code{\t} & 水平制表符（tab） & 9 \\
-\code{\r} & 回车（carriage return） & 13 \\
-\code{\b} & 退格 & 8 \\
-\code{\\} & 一个反斜杠 & 92 \\
-\code{\"} & 双引号 & 34 \\
-\code{\'} & 单引号 & 39 \\
-\code{\0} & 空字符（字符串结束标志） & 0 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\begin{example}
-下面这条语句会输出什么？
-\begin{codebox}{escape.c —— 转义字符}
-#include <stdio.h>
-
-int main(void)
-{
-    printf("姓名\t年龄\n");
-    printf("张三\t18\n");
-    printf("他说：\"你好！\"\n");
-    return 0;
-}
-\end{codebox}
-\end{example}
-\begin{solution}
-\code{\t} 输出制表符，对齐两列；\code{\n} 换行；\code{\"} 输出普通的双引号。结果：
-\begin{outbox}{运行结果}
-姓名    年龄
-张三    18
-他说："你好！"
-\end{outbox}
-\end{solution}
-
-\section{输出与输入}
-
-程序要和外界交流：把结果告诉人（输出），把人给的数据读进来（输入）。C 语言的标准库提供了一组函数，最常用的是 \code{printf} 和 \code{scanf}。
-
-\subsection{\texttt{printf}：格式化输出}
-
-\code{printf} 的名字来自 \en{print formatted}（格式化打印）。它的第一个参数是\textbf{格式串}，里面可以嵌入\textbf{占位符}，后面的参数依次填进去。
-
-\begin{center}
-\begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
-  \node[font=\ttfamily\small,anchor=west] (f) at (0,0) {printf("a = \%d, b = \%d\textbackslash n", a, b);};
-  \draw[ptr] (2.4,-0.25) -- (2.4,-1.1);
-  \node[font=\scriptsize,color=ptrline,anchor=north] at (2.4,-1.1) {第 1 个占位符填 \texttt{a}};
-  \draw[ptr] (4.6,-0.25) -- (4.6,-1.8);
-  \node[font=\scriptsize,color=ptrline,anchor=north] at (4.6,-1.8) {第 2 个占位符填 \texttt{b}};
-\end{tikzpicture}
-\end{center}
-
-常用的格式符：
-
-\begin{center}
-\begin{tabular}{@{}lll@{}}
-\toprule
-格式符 & 类型 & 例子 \\
-\midrule
-\texttt{\%d} & 有符号十进制整数 & \texttt{printf("\%d", 42);} \\
-\texttt{\%u} & 无符号十进制整数 & \texttt{printf("\%u", 42U);} \\
-\texttt{\%x} & 十六进制（小写） & \texttt{printf("\%x", 255);} 输出 \texttt{ff} \\
-\texttt{\%o} & 八进制 & \texttt{printf("\%o", 8);} 输出 \texttt{10} \\
-\texttt{\%c} & 单个字符 & \texttt{printf("\%c", 'A');} \\
-\texttt{\%f} & 浮点数（默认 6 位小数） & \texttt{printf("\%f", 3.14);} \\
-\texttt{\%.2f} & 保留 2 位小数 & \texttt{printf("\%.2f", 3.14159);} 输出 \texttt{3.14} \\
-\texttt{\%s} & 字符串 & \texttt{printf("\%s", "hi");} \\
-\texttt{\%p} & 指针（地址） & \texttt{printf("\%p", (void *)\&a);} \\
-\texttt{\%\%} & 输出一个百分号 & \texttt{printf("100\%\%");} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\begin{pitfall}[格式符和参数类型必须匹配]
-用 \texttt{\%d} 打印 \code{double}，或用 \texttt{\%f} 打印 \code{int}，属于未定义行为。编译器通常会给出警告（\code{-Wall} 打开时），但程序可能仍然“看起来能跑”。请务必让格式符和参数类型一一对应。
-\end{pitfall}
-
-\subsection{宽度、精度与对齐}
-
-格式串里还可以指定“占多少格、保留几位小数、左对齐还是右对齐”：
-
-\begin{codebox}{format.c —— 格式化输出}
-#include <stdio.h>
-
-int main(void)
-{
-    printf("[%5d]\n", 42);       /* 宽度 5，右对齐 */
-    printf("[%-5d]\n", 42);      /* 宽度 5，左对齐 */
-    printf("[%05d]\n", 42);      /* 宽度 5，用 0 填充 */
-    printf("[%.3f]\n", 3.14159); /* 保留 3 位小数 */
-    printf("[%8.2f]\n", 3.14159);/* 总宽 8，保留 2 位小数 */
-    printf("[%c]\n", 'A');
-    printf("[%s]\n", "hello");
-    return 0;
-}
-\end{codebox}
-
-\begin{outbox}{运行结果}
-[   42]
-[42   ]
-[00042]
-[3.142]
-[    3.14]
-[A]
-[hello]
-\end{outbox}
-
-\begin{tipbox}[对齐表格的小技巧]
-打印成绩单、实验数据时，用 \texttt{\%8.2f} 这样的固定宽度格式，可以让小数点对齐，输出整齐好看。
-\end{tipbox}
-
-\subsection{\texttt{scanf}：读入数据}
-
-\code{scanf} 的名字来自 \en{scan formatted}。它按格式串读取输入，并把结果\textbf{存到变量的地址里}。
-
-\begin{codebox}{input.c —— 读入两个整数}
+\begin{codebox}{scanf2.c —— 读入两个整数}
 #include <stdio.h>
 
 int main(void)
@@ -500,439 +339,268 @@ int main(void)
     printf("请输入两个整数：");
     scanf("%d%d", &a, &b);
 
-    printf("它们的和是 %d\n", a + b);
+    printf("a = %d, b = %d\n", a, b);
     return 0;
 }
 \end{codebox}
 
 \begin{outbox}{运行示例}
 请输入两个整数：3 5
-它们的和是 8
+a = 3, b = 5
 \end{outbox}
 
-注意 \code{scanf} 的参数是 \texttt{\&a}、\texttt{\&b}，不是 \code{a}、\code{b}。为什么？
+两个 \texttt{\%d} 连在一起，输入时用空格或回车隔开都可以。
+
+\section{顺序结构：一步一步来}
+
+顺序结构就是程序从上往下，一句一句执行。大部分小程序的套路都是：
 
 \begin{center}
-\begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
-  \node[ptrbox,minimum width=2cm] (a) at (0,0) {\texttt{a}};
-  \node[font=\ttfamily\small] (addr) at (2.8,0) {0x1000};
-  \node[font=\small,anchor=west] at (4.4,0) {变量的地址};
-  \draw[ptr] (a.east) -- (addr.west);
-  \node[font=\small,anchor=west] at (-1.2,1.2) {告诉 \texttt{scanf}：“把读到的数写到这个地址”};
+\begin{tikzpicture}[x=1cm,y=1cm,node distance=12mm]
+  \node[box] (in) {输入数据};
+  \node[box,right=of in] (calc) {计算};
+  \node[box,right=of calc] (out) {输出结果};
+  \draw[flow] (in) -- (calc);
+  \draw[flow] (calc) -- (out);
 \end{tikzpicture}
 \end{center}
 
-\texttt{\&} 是“取地址”运算符。\code{scanf} 需要知道把数据写到哪里，所以必须给它地址。关于地址和指针，第 8 章会详细讲，现在先记住“\code{scanf} 的变量前面要加 \texttt{\&}”。
+下面用几个例子练一练。
 
-\begin{pitfall}[\texttt{scanf} 的五个坑]
-\begin{enumerate}
-  \item \textbf{忘记 \texttt{\&}}：\texttt{scanf("\%d", a);} 会导致程序崩溃或读到错误位置。这是最经典的错误。
-  \item \textbf{格式串里乱加空格}：\texttt{scanf("\%d, \%d", \&a, \&b);} 要求输入时也必须带逗号。初学者常在格式串里加 \code{\n}，这会让程序等待你多输入一些内容。
-  \item \textbf{用 \texttt{\%f} 读 \code{double}}：\code{scanf} 读 \code{double} 必须用 \texttt{\%lf}（注意是字母 l 加 f），而 \code{printf} 里 \texttt{\%f} 和 \texttt{\%lf} 都可以。
-  \item \textbf{输入缓冲区残留}：先用 \code{scanf} 读数字，再用 \code{getchar} 读字符时，会读到一个换行符。第 9 章会详细处理。
-  \item \textbf{不检查返回值}：输入失败时 \code{scanf} 返回成功读到的项数。健壮的代码应该检查它，例如 \texttt{if (scanf("\%d", \&a) != 1) \{ ... \}}。
-\end{enumerate}
-\end{pitfall}
-
-\subsection{\texttt{getchar} 与 \texttt{putchar}}
-
-如果只需要读/写单个字符，可以用更简单的 \code{getchar} 和 \code{putchar}：
-
-\begin{codebox}{getchar.c —— 读写单个字符}
-#include <stdio.h>
-
-int main(void)
-{
-    int c;
-
-    printf("请输入一个字符：");
-    c = getchar();          /* 从标准输入读一个字符，返回它的编码 */
-
-    printf("你输入的是：");
-    putchar(c);
-    putchar('\n');
-
-    return 0;
-}
-\end{codebox}
-
-\begin{outbox}{运行示例}
-请输入一个字符：A
-你输入的是：A
-\end{outbox}
-
-注意这里用 \code{int c} 而不是 \code{char c}：因为 \code{getchar} 在遇到文件结束（EOF）时返回一个特殊值（通常是 $-1$），\code{char} 可能存不下。这个细节第 9 章会展开。
-
-\section{表达式、语句与注释}
-
-\subsection{语句}
-
-语句是程序执行的最小单位。常见的语句有：
-
-\begin{itemize}
-  \item 声明语句：\code{int a;}
-  \item 表达式语句：\code{a = 10;}、\code{printf("hi");}
-  \item 复合语句：用花括号括起来的一组语句 \texttt{\{ ... \}}
-  \item 空语句：只有一个分号 \code{;}（有时用于占位）
-  \item 控制语句：\code{if}、\code{for}、\code{return} 等（后面几章讲）
-\end{itemize}
-
-\subsection{表达式}
-
-表达式是由变量、常量、运算符组成的式子，\textbf{有值}。例如：
-
-\begin{center}
-\begin{tabular}{@{}ll@{}}
-\toprule
-表达式 & 值 \\
-\midrule
-\code{3 + 5} & 8 \\
-\code{a * 2} & \code{a} 的两倍 \\
-\code{a = 10} & 赋值表达式的值是 10（赋值本身也有值） \\
-\code{printf("hi")} & 打印的字符数（通常用不到） \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-在 C 语言里，\textbf{表达式加上分号就变成语句}。这一点很重要：\code{a + b;} 是合法的语句（虽然没什么用），而 \code{a = b} 是表达式。
-
-\subsection{注释}
-
-注释是写给人看的，编译器会忽略它。C89 只有一种注释：
-
-\begin{codebox}{comment.c —— 注释的写法}
-#include <stdio.h>
-
-int main(void)
-{
-    /* 这是块注释，可以跨行
-       也可以写很多行 */
-    int a = 10;     /* 行尾注释 */
-
-    /*
-     * 这种星号开头的排版只是习惯，不是语法要求
-     */
-    printf("%d\n", a);
-    return 0;
-}
-\end{codebox}
-
-\begin{c89box}
-C89 只支持 \code{/* ... */} 注释，\textbf{不支持} \code{//} 单行注释（那是 C99 引入的）。本书所有代码都遵守这一点。
-\end{c89box}
-
-\begin{tipbox}[注释写什么]
-好的注释解释“为什么”，而不是“是什么”。\code{a = a + 1;} 不需要注释“让 a 加 1”，但可以注释“记录重试次数”。代码本身应该让人看懂“做什么”，注释用来补充意图、边界条件和坑。
-\end{tipbox}
-
-\section{顺序结构综合例题}
-
-顺序结构的程序有一个固定套路：\textbf{输入 → 计算 → 输出}。下面用几个例子把这个套路练熟。
-
-\subsection{例：摄氏度转华氏度}
+\subsection{例：两数之和}
 
 \begin{example}
-输入一个摄氏温度 $C$，输出对应的华氏温度 $F$。公式：$F = C \times \frac{9}{5} + 32$。
+输入两个整数，输出它们的和。
 \end{example}
 \begin{solution}
-先看一个想当然的写法：
-
-\begin{codebox}{temperature.c —— 温度转换（错误示范）}
+\begin{codebox}{sum.c —— 两数之和}
 #include <stdio.h>
 
 int main(void)
 {
-    int c;
-    int f;
+    int a, b, sum;
 
-    printf("请输入摄氏温度：");
-    scanf("%d", &c);
+    printf("请输入两个整数：");
+    scanf("%d%d", &a, &b);
 
-    f = c * 9 / 5 + 32;
-    printf("华氏温度 = %d\n", f);
-    return 0;
-}
-\end{codebox}
-
-这个程序能跑，但有一个隐藏问题：\code{9 / 5} 是整数除法，结果是 1，不是 1.8。所以 $C=20$ 时算出来是 $20 \times 1 + 32 = 52$，而不是 $68$。
-
-正确写法是把至少一个操作数变成浮点数：
-\begin{codebox}{temperature2.c —— 温度转换（正确写法）}
-#include <stdio.h>
-
-int main(void)
-{
-    double c;
-    double f;
-
-    printf("请输入摄氏温度：");
-    scanf("%lf", &c);
-
-    f = c * 9.0 / 5.0 + 32.0;
-    printf("华氏温度 = %.2f\n", f);
+    sum = a + b;
+    printf("和是 %d\n", sum);
     return 0;
 }
 \end{codebox}
 
 \begin{outbox}{运行示例}
-请输入摄氏温度：20
-华氏温度 = 68.00
+请输入两个整数：3 5
+和是 8
 \end{outbox}
-
-要点：\code{9.0 / 5.0} 是浮点除法；\code{scanf} 读 \code{double} 用 \texttt{\%lf}；输出保留两位小数用 \texttt{\%.2f}。
 \end{solution}
 
-\subsection{例：交换两个变量}
+\subsection{例：长方形的面积}
 
 \begin{example}
-输入两个整数 \code{a} 和 \code{b}，交换它们的值后输出。
+输入长和宽，输出长方形的面积。
 \end{example}
 \begin{solution}
-不能直接写 \code{a = b; b = a;}——那样 \code{a} 原来的值会被覆盖。需要借助一个临时变量，就像交换两杯水需要第三个空杯子：
+\begin{codebox}{rectangle.c —— 长方形面积}
+#include <stdio.h>
 
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[x=1cm,y=1cm,>=Stealth]
-    \node[membox,minimum width=2cm] (a) at (0,0) {a};
-    \node[membox,minimum width=2cm] (b) at (2.5,0) {b};
-    \node[emptybox,minimum width=2cm] (t) at (5,0) {temp};
-    \node[font=\small] at (0,1.0) {3};
-    \node[font=\small] at (2.5,1.0) {5};
-    \node[font=\scriptsize,color=black!60] at (5,1.0) {?};
+int main(void)
+{
+    double length, width, area;
 
-    \node[font=\small] at (0,-1.2) {初始};
-    \node[font=\small] at (2.5,-1.2) {};
-    \node[font=\small] at (5,-1.2) {};
+    printf("请输入长和宽：");
+    scanf("%lf%lf", &length, &width);
 
-    \draw[ptr] (0,-2.2) to[bend left] node[lbl,below]{① temp = a} (5,-2.2);
-    \draw[ptr] (2.5,-2.9) to[bend left] node[lbl,below]{② a = b} (0,-2.9);
-    \draw[ptr] (5,-3.6) to[bend left] node[lbl,below]{③ b = temp} (2.5,-3.6);
-  \end{tikzpicture}
-  \caption{交换两个变量需要借助临时变量}
-  \label{fig:swap}
-\end{figure}
+    area = length * width;
+    printf("面积是 %.2f\n", area);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入长和宽：3.5 2
+面积是 7.00
+\end{outbox}
+
+\texttt{scanf} 读 \texttt{double} 时用 \texttt{\%lf}，输出时用 \texttt{\%f} 或 \texttt{\%.2f}。先记住这个区别。
+\end{solution}
+
+\subsection{例：求平均分}
+
+\begin{example}
+输入三门课的成绩，输出平均分，保留两位小数。
+\end{example}
+\begin{solution}
+\begin{codebox}{average.c —— 平均分}
+#include <stdio.h>
+
+int main(void)
+{
+    double a, b, c, average;
+
+    printf("请输入三门课成绩：");
+    scanf("%lf%lf%lf", &a, &b, &c);
+
+    average = (a + b + c) / 3.0;
+    printf("平均分是 %.2f\n", average);
+    return 0;
+}
+\end{codebox}
+
+\begin{outbox}{运行示例}
+请输入三门课成绩：80 90 100
+平均分是 90.00
+\end{outbox}
+\end{solution}
+
+\subsection{例：交换两杯水}
+
+\begin{example}
+有两个变量 \texttt{a} 和 \texttt{b}，怎样交换它们的值？
+\end{example}
+\begin{solution}
+交换两杯水，需要第三个空杯子。交换两个变量，也需要一个临时变量。
 
 \begin{codebox}{swap.c —— 交换两个变量}
 #include <stdio.h>
 
 int main(void)
 {
-    int a, b, temp;
-
-    printf("请输入两个整数：");
-    scanf("%d%d", &a, &b);
+    int a = 3;
+    int b = 5;
+    int temp;
 
     printf("交换前：a = %d, b = %d\n", a, b);
 
-    temp = a;       /* ① 把 a 存到临时变量 */
-    a = b;          /* ② 把 b 写到 a */
-    b = temp;       /* ③ 把临时变量写回 b */
+    temp = a;       /* 把 a 倒进空杯子 */
+    a = b;          /* 把 b 倒进 a */
+    b = temp;       /* 把空杯子里的 a 倒进 b */
 
     printf("交换后：a = %d, b = %d\n", a, b);
     return 0;
 }
 \end{codebox}
 
-\begin{outbox}{运行示例}
-请输入两个整数：3 5
+\begin{outbox}{运行结果}
 交换前：a = 3, b = 5
 交换后：a = 5, b = 3
 \end{outbox}
 
-这个“三步交换”在后面排序算法里会反复出现。
+这三步以后会经常用到，请记牢。
 \end{solution}
 
-\subsection{例：三位数反转}
+\section{注释和好习惯}
 
-\begin{example}
-输入一个三位正整数，输出它的逆序数。例如输入 123，输出 321。
-\end{example}
-\begin{solution}
-利用整数除法和取余：
+\subsection{写注释}
+
+注释是写给人看的，计算机不会执行。C89 用 \texttt{/* */} 包住注释：
+
+\begin{codebox}{comment.c —— 注释}
+#include <stdio.h>
+
+int main(void)
+{
+    /* 这是一个变量，用来存年龄 */
+    int age = 18;
+
+    printf("%d\n", age);    /* 输出年龄 */
+    return 0;
+}
+\end{codebox}
 
 \begin{itemize}
-  \item 个位：\texttt{n \% 10}；
-  \item 十位：\texttt{n / 10 \% 10}；
-  \item 百位：\code{n / 100}。
+  \item \texttt{/*} 和 \texttt{*/} 要成对出现；
+  \item 注释可以写在一行里，也可以跨很多行；
+  \item 注释是给自己和同学看的，写“为什么这样做”，不要写废话。
 \end{itemize}
 
-\begin{codebox}{reverse.c —— 三位数反转}
-#include <stdio.h>
+\begin{c89box}[C89 只用块注释]
+C89 不支持 \texttt{//} 这种单行注释。本书所有代码都用 \texttt{/* */}。
+\end{c89box}
 
-int main(void)
-{
-    int n, ge, shi, bai, rev;
+\subsection{排版好习惯}
 
-    printf("请输入一个三位数：");
-    scanf("%d", &n);
+同样的程序，排版好会更容易看懂：
 
-    ge  = n % 10;
-    shi = n / 10 % 10;
-    bai = n / 100;
-
-    rev = ge * 100 + shi * 10 + bai;
-    printf("逆序数 = %d\n", rev);
-    return 0;
-}
-\end{codebox}
-
-\begin{outbox}{运行示例}
-请输入一个三位数：123
-逆序数 = 321
-\end{outbox}
-
-注意 \code{n / 100} 对 123 得到 1（整数除法丢弃小数部分），这正好是百位。
-\end{solution}
-
-\subsection{例：求平均值}
-
-\begin{example}
-输入三门课的成绩（可能有小数），输出平均分，保留两位小数。
-\end{example}
-\begin{solution}
-思路如下：
-
-\begin{codebox}{average.c —— 求平均分}
-#include <stdio.h>
-
-int main(void)
-{
-    double s1, s2, s3, average;
-
-    printf("请输入三门课成绩：");
-    scanf("%lf%lf%lf", &s1, &s2, &s3);
-
-    average = (s1 + s2 + s3) / 3.0;
-    printf("平均分 = %.2f\n", average);
-    return 0;
-}
-\end{codebox}
-
-\begin{outbox}{运行示例}
-请输入三门课成绩：85.5 90 92.5
-平均分 = 89.33
-\end{outbox}
-
-注意除以 \code{3.0} 而不是 \code{3}。虽然这里 \code{s1 + s2 + s3} 已经是 \code{double}，除以 \code{3} 也会做浮点除法（因为一个操作数是浮点），但写成 \code{3.0} 更清楚，也更不容易出错。
-\end{solution}
-
-\section{常见错误与调试}
-
-初学阶段 90\% 的编译错误都来自下面几类。遇到报错，先对照这张表。
-
-\begin{center}
-\begin{tabular}{@{}p{0.34\textwidth}p{0.56\textwidth}@{}}
-\toprule
-错误现象 & 可能原因 \\
-\midrule
-\code{expected ';' before ...} & 上一行漏了分号 \\
-\texttt{stray '\textbackslash 357' in program} & 用了中文标点（，；：）\\
-\code{'printf' undeclared} & 忘了 \code{#include <stdio.h>} \\
-\code{undefined reference to 'main'} & 没有 \code{main} 函数，或拼写错误 \\
-\code{implicit declaration of function} & 函数没声明/没包含头文件 \\
-输出乱码或数字奇怪 & 格式符与类型不匹配，或变量未初始化 \\
-程序一闪而过 & 控制台程序运行完自动关闭（正常现象） \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-\begin{tipbox}[读错误信息的顺序]
-编译器报错时，\textbf{先看第一条}。后面的错误经常是第一条引起的连锁反应。错误信息里的文件名、行号、列号都要看，尤其是行号。
-\end{tipbox}
-
-\begin{deepbox}[拔高：用 \texttt{printf} 调试]
-在没有调试器的情况下，最有效的调试手段是“打印中间结果”：
-\begin{codebox}{debug.c —— 打印中间变量}
+\begin{codebox}{style.c —— 好的排版}
 #include <stdio.h>
 
 int main(void)
 {
     int a = 10;
-    int b = 0;
-    int c;
+    int b = 20;
+    int sum;
 
-    printf("debug: a=%d, b=%d\n", a, b);
-    c = a / b;          /* 这里会出问题 */
-    printf("debug: c=%d\n", c);
-    return 0;
-}
-\end{codebox}
-运行时会发现程序在除法处崩溃（除零）。通过打印可以看到 \code{b} 是 0。等学了第 4 章的分支，就可以在除法前先判断 \code{b != 0}。
-\end{deepbox}
+    sum = a + b;
 
-\section{拔高：变量在内存里的细节}
-
-\subsection{声明与定义}
-
-严格来说，“声明”是告诉编译器“有这么个东西”，“定义”是为它分配内存。对于局部变量，\code{int a;} 既是声明也是定义。全局变量和函数的情况稍微复杂一些，等学到多文件编程时再区分。现在你只要知道：\textbf{局部变量在栈上分配，函数返回时自动释放}。
-
-\subsection{为什么局部变量不自动清零}
-
-栈空间会被反复复用。函数 A 用完的栈空间，函数 B 接着用，里面还留着 A 的数据。所以 B 的局部变量如果没有初始化，就会看到“上次留下的垃圾”。这也是为什么“未初始化变量”是危险的。
-
-\subsection{类型转换的初步印象}
-
-当不同类型的值混在一起运算时，C 会自动做类型转换。例如：
-
-\begin{codebox}{convert.c —— 隐式类型转换}
-#include <stdio.h>
-
-int main(void)
-{
-    int a = 7;
-    int b = 2;
-    double c;
-
-    c = a / b;          /* 先做整数除法，得 3，再转成 3.0 */
-    printf("c = %f\n", c);
-
-    c = (double)a / b;  /* 先把 a 转成 double，再做浮点除法 */
-    printf("c = %f\n", c);
-
+    printf("sum = %d\n", sum);
     return 0;
 }
 \end{codebox}
 
-\begin{outbox}{运行结果}
-c = 3.000000
-c = 3.500000
-\end{outbox}
+\begin{itemize}
+  \item 花括号单独占一行；
+  \item 里面的语句缩进 4 个空格；
+  \item 不同功能的代码之间空一行；
+  \item 变量名起得有意义。
+\end{itemize}
 
-\code{(double)a} 叫\textbf{强制类型转换}，第 3 章会系统讲。现在记住：\textbf{整数除法会截断小数部分}，想要精确结果，先把操作数转成浮点。
+\section{常见错误}
+
+初学阶段，90\% 的错误都是下面几种：
+
+\begin{center}
+\begin{tabular}{@{}p{0.38\textwidth}p{0.52\textwidth}@{}}
+\toprule
+错误 & 原因 \\
+\midrule
+少写分号 & 每条语句末尾要有 \texttt{;} \\
+用了中文标点 & 中文的 \texttt{；，（）} 计算机不认识 \\
+\texttt{printf} 拼错 & 大小写要一致，是 \texttt{printf} \\
+\texttt{scanf} 忘了 \texttt{\&} & 应该写 \texttt{scanf("\%d", \&a);} \\
+占位符用错 & 整数用 \texttt{\%d}，小数用 \texttt{\%f} \\
+变量没赋值就使用 & 盒子里是垃圾数据 \\
+变量声明写在语句后面 & C89 不允许，要全部提到开头 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{pitfall}[程序一闪而过]
+在 Windows 上双击运行控制台程序，程序执行完窗口就关了，看起来“一闪而过”。这是正常现象。可以在最后加一句 \texttt{getchar();} 让程序等一下，或者从命令行运行。
+\end{pitfall}
 
 \section{本章小结}
 
 \begin{center}
-\begin{tabular}{@{}p{0.3\textwidth}p{0.6\textwidth}@{}}
+\begin{tabular}{@{}p{0.26\textwidth}p{0.62\textwidth}@{}}
 \toprule
 主题 & 要点 \\
 \midrule
-程序骨架 & 预处理指令、\code{int main(void)}、函数体、\code{return 0;} \\
-语句 & 以分号结尾；花括号组成复合语句 \\
-变量 & 名字 + 类型 + 值 + 地址；先声明后使用 \\
-C89 声明 & 所有声明必须在块开头，执行语句之前 \\
-类型 & \code{char}/\code{int}/\code{float}/\code{double}；大小用 \code{sizeof} 查 \\
-输出 & \code{printf} 格式串 + 占位符；格式符与类型必须匹配 \\
-输入 & \code{scanf} 要传地址（\texttt{\&a}）；注意返回值与缓冲区 \\
-注释 & C89 只用 \code{/* */} \\
-顺序结构 & 输入 → 计算 → 输出，自上而下执行 \\
+程序骨架 & 头文件、\texttt{main}、花括号、\texttt{return 0;} \\
+输出 & \texttt{printf}，用 \texttt{\%d}、\texttt{\%f} 等占位 \\
+输入 & \texttt{scanf}，变量前加 \texttt{\&} \\
+变量 & 先声明，后使用；名字要有意义 \\
+类型 & 整数 \texttt{int}，小数 \texttt{double}，字符 \texttt{char} \\
+顺序结构 & 输入 → 计算 → 输出 \\
+注释 & \texttt{/* */} \\
+常见错误 & 少分号、中文标点、忘 \texttt{\&}、占位符不对 \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{tipbox}[下一章预告]
-顺序结构只能“一条路走到黑”。真实程序需要根据条件做选择（分支），也需要重复做某件事（循环）。在学分支之前，我们先把运算符讲透——尤其是关系运算和逻辑运算，它们是“判断”的基础。
+顺序结构只能一条路走到底。下一章我们先学运算符，再学“如果……就……”的分支结构，让程序学会判断。
 \end{tipbox}
 
 \begin{problemset}
-  \item 写一个程序，输出你的姓名、专业和一句座右铭，每行一项。
-  \item 输入两个整数，输出它们的和、差、积、商和余数。
-  \item 输入一个华氏温度，输出摄氏温度（公式 $C = (F - 32) \times 5 / 9$），保留两位小数。
-  \item 输入圆的半径 $r$，输出周长和面积（$\pi$ 取 3.1415926），保留三位小数。
-  \item 输入一个四位数，输出它的各位数字之和。例如 2026，输出 10。
-  \item 输入两个整数并交换，要求用临时变量实现，并打印交换前后的值。
-  \item 下面的程序有几处错误？请找出来并改正。
-\begin{codebox}{find-bugs.c —— 找错题}
+  \item 写一个程序，在屏幕上输出你的姓名和一句座右铭，分两行显示。
+  \item 输入两个整数，输出它们的和、差、积。
+  \item 输入一个圆的半径，输出它的周长和面积，保留两位小数（$\pi$ 取 3.14159）。
+  \item 输入一个长方形的长和宽，输出面积和周长。
+  \item 输入三个整数，输出它们的平均值，保留两位小数。
+  \item 输入两个整数，交换后输出，要求使用临时变量。
+  \item 下面程序有几处错误？找出来并改正。
+\begin{codebox}{find-errors.c —— 找错误}
 #include <stdio.h>
 
 int main(void)
@@ -944,7 +612,7 @@ int main(void)
     return 0;
 }
 \end{codebox}
-  \item 解释 \texttt{printf("\%d", 3.14);} 为什么是错的，应该怎么写。
-  \item 输入一个三位数，输出它的各位数字之和与逆序数。
-  \item 思考题：为什么 \texttt{scanf("\%d", \&a);} 需要 \texttt{\&}，而 \texttt{printf("\%d", a);} 不需要？
+  \item 解释 \texttt{scanf("\%d", \&a);} 中 \texttt{\&} 的作用。
+  \item 解释 \texttt{printf("\%d", 3.14);} 为什么不对，应该怎么写。
+  \item 思考题：为什么变量要先声明再使用？
 \end{problemset}
